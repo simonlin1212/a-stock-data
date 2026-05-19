@@ -113,6 +113,61 @@ export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 
 其他数据源（mootdx / 腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮）全部免费，无需 key。
 
+### mootdx 客户端（必读，规避 0.11.7 已知 bug）
+
+> **已知 bug（mootdx 0.11.7）：** `Quotes.factory(market='std')` 裸调用会触发 `ValueError: not enough values to unpack (expected 2, got 0)`。
+> 根因：`config.json` 中 `BESTIP.HQ` 初始值是空字符串 `""`（不是缺失键），`quotes.py:151` 用 `dict.get(key, default)` 取不到 default，`self.server = ""` 拆包失败。
+> 即便指定 `bestip=True` 测速也无法修复（测速结果写不回 `BESTIP.HQ`，且写入的是不在内置列表中的 IP）。
+> 海外/部分 ISP 网络下，38 个内置服务器中通常只有 ~14 个可达，必须 fallback 探测。
+
+**统一使用以下 helper 创建客户端（4 处 mootdx 调用都走它）：**
+
+```python
+import socket
+from mootdx.quotes import Quotes
+
+# 实测可用的备选服务器列表（按延迟排序，2026-05 验证）
+_TDX_SERVERS = [
+    ('119.97.185.59', 7709),    # 武汉电信主站1
+    ('124.70.133.119', 7709),   # 上海双线主站12
+    ('116.205.183.150', 7709),  # 广州双线主站7
+    ('123.60.73.44', 7709),     # 上海双线主站11
+    ('116.205.163.254', 7709),  # 广州双线主站5
+    ('121.36.225.169', 7709),   # 上海双线主站9
+    ('123.60.70.228', 7709),    # 上海双线主站10
+    ('124.71.9.153', 7709),     # 广州双线主站4
+    ('110.41.147.114', 7709),   # 深圳双线主站1
+    ('124.71.187.122', 7709),   # 上海双线主站14
+]
+
+def _probe(ip: str, port: int, timeout: float = 2.0) -> bool:
+    """TCP 握手探测"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((ip, port))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+def tdx_client(market: str = 'std'):
+    """
+    创建 mootdx 客户端，规避 0.11.7 BESTIP.HQ 空串 bug。
+    顺序探测 _TDX_SERVERS，返回第一个 TCP 可达的服务器对应的客户端。
+    全部不通则抛 RuntimeError。
+    """
+    for ip, port in _TDX_SERVERS:
+        if _probe(ip, port):
+            return Quotes.factory(market=market, server=(ip, port))
+    raise RuntimeError("所有 mootdx 服务器均不可达，请检查网络或更新 _TDX_SERVERS 列表")
+
+# 使用方式（替代所有 Quotes.factory(market='std') 调用）
+# client = tdx_client()
+```
+
+> **海外 IP 用户：** mootdx 走通达信 TCP 7709 协议，海外环境通常全部超时。建议改用 yfinance 或走国内代理。`tdx_client()` 会快速失败给出明确报错而非死等。
+
 ### 市场前缀规则（全局通用）
 
 ```python
@@ -176,7 +231,7 @@ TCP 二进制协议，连通达信服务器(7709)，无需注册，不封IP。
 ```python
 from mootdx.quotes import Quotes
 
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 中的 helper 定义（规避 0.11.7 bug）
 
 # === K线数据 ===
 # market: 0=深圳, 1=上海
@@ -1483,8 +1538,9 @@ for n in news[:10]:
 
 ```python
 from mootdx.quotes import Quotes
-
-client = Quotes.factory(market='std')
+# 注意：0.11.7 裸调用 Quotes.factory(market='std') 有 BESTIP.HQ 空串 bug。
+# 生产代码请用前述 tdx_client() helper；此处为演示底层调用。
+client = tdx_client()  # 见 Prerequisites 中的 helper 定义
 
 # market: 0=深圳, 1=上海
 fin = client.finance(symbol='688017')
@@ -1502,7 +1558,7 @@ fin = client.finance(symbol='688017')
 ```python
 from mootdx.quotes import Quotes
 
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 中的 helper 定义
 
 # 9 大类文本数据:
 categories = [
@@ -1668,7 +1724,7 @@ for a in anns[:10]:
 
 ```python
 from mootdx.quotes import Quotes
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 中的 helper 定义
 text = client.F10(symbol='688017', name='最新提示')
 # 包含最近的公告/分红/股东大会决议等摘要
 ```
