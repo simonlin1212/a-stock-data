@@ -31,23 +31,21 @@ A 股全栈数据 · 七层架构 · V3.0
 
 ## 快速开始
 
-**3 步，2 分钟。**
+**2 步，1 分钟。**
 
 ```bash
-# 1. 创建 skill 目录
-mkdir -p ~/.claude/skills/a-stock-data
+# 1. 一键安装（拉取 SKILL.md + references/，自动放到 ~/.claude/skills/a-stock-data/）
+curl -fsSL https://raw.githubusercontent.com/simonlin1212/a-stock-data/main/install.sh | bash
 
-# 2. 把 SKILL.md 放进去
-curl -o ~/.claude/skills/a-stock-data/SKILL.md \
-  https://raw.githubusercontent.com/simonlin1212/a-stock-data/main/SKILL.md
-
-# 3. 安装依赖（V3.0 不再需要 akshare）
+# 2. 安装依赖（V3.0 不再需要 akshare）
 pip install mootdx requests pandas stockstats
 ```
 
 启动 Claude Code，说一句「帮我看看 688017 的估值」，自动激活。
 
-> **Codex / OpenClaw 用户：** 把 SKILL.md 的内容贴入你的系统 prompt 或项目上下文文件即可，内嵌的 Python 代码可直接执行。
+> **自定义安装路径**：`INSTALL_DIR=/path/to/skill curl ... | bash`
+
+> **Codex / OpenClaw 用户：** 把 SKILL.md 内容贴入系统 prompt 或项目上下文，需要某层完整代码时再读对应的 `references/0X-*.md`，内嵌 Python 代码可直接执行。
 
 ---
 
@@ -294,23 +292,21 @@ China A-Share Full-Stack Data · 7-Layer Architecture · V3.0
 
 ## Quick Start
 
-**3 steps, 2 minutes.**
+**2 steps, 1 minute.**
 
 ```bash
-# 1. Create skill directory
-mkdir -p ~/.claude/skills/a-stock-data
+# 1. One-line install (fetches SKILL.md + references/ into ~/.claude/skills/a-stock-data/)
+curl -fsSL https://raw.githubusercontent.com/simonlin1212/a-stock-data/main/install.sh | bash
 
-# 2. Download SKILL.md
-curl -o ~/.claude/skills/a-stock-data/SKILL.md \
-  https://raw.githubusercontent.com/simonlin1212/a-stock-data/main/SKILL.md
-
-# 3. Install dependencies (V3.0: akshare no longer needed)
+# 2. Install dependencies (V3.0: akshare no longer needed)
 pip install mootdx requests pandas stockstats
 ```
 
 Launch Claude Code and say "Check the valuation of 688017" — the skill activates automatically.
 
-> **Codex / OpenClaw users:** Paste the contents of SKILL.md into your system prompt or project context file. The embedded Python code is ready to execute.
+> **Custom install path:** `INSTALL_DIR=/path/to/skill curl ... | bash`
+
+> **Codex / OpenClaw users:** Paste the contents of SKILL.md into your system prompt or project context. Read `references/0X-*.md` on demand for the layer you need; the embedded Python code is ready to execute.
 
 ---
 
