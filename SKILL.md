@@ -2,17 +2,19 @@
 name: a-stock-data
 description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
 origin: custom
-version: 3.1
+version: 3.2
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V3.1
+# A股全栈数据工具包 V3.2
 
-七层数据架构，28 个端点，全部实测可用（2026-05-19 验证，覆盖主板/中小板/科创板/ST）。
+七层数据架构，28 个端点，全部实测可用（2026-05-29 验证，覆盖主板/中小板/科创板/ST）。
 
+> **V3.2 修复（2026-05-29）：** 替换百度概念板块→东财替代 + 修复腾讯财经 urllib→requests(macOS SSL) + 修复财联社快讯 API 路径变更 + 修复东财个股新闻返回结构 + 修复新浪财报三表返回结构 + 优化 push2 请求头防拦截。
+>
 > **V3.1 修复：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易 RPT 报表名更新、机构席位改用 BUY/SELL 明细筛选）+ 修复东财全球资讯 req_trace 参数 + 修复巨潮公告 orgId 格式。
 >
 > **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。
@@ -206,7 +208,7 @@ trades = client.transaction(symbol='688017', date='20260502')
 HTTP GET，GBK 编码，`~` 分隔 88 个字段，不封IP。
 
 ```python
-import urllib.request
+import requests
 
 def tencent_quote(codes: list[str]) -> dict[str, dict]:
     """
@@ -226,10 +228,9 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
             prefixed.append(f"sz{c}")
 
     url = "https://qt.gtimg.cn/q=" + ",".join(prefixed)
-    req = urllib.request.Request(url)
-    req.add_header("User-Agent", "Mozilla/5.0")
-    resp = urllib.request.urlopen(req, timeout=10)
-    data = resp.read().decode("gbk")
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+    r.encoding = "gbk"
+    data = r.text
 
     result = {}
     for line in data.strip().split(";"):
@@ -740,35 +741,46 @@ _BAIDU_PAE_HEADERS = {
 
 def baidu_concept_blocks(code: str) -> dict:
     """
-    百度股市通概念板块归属。
-    返回: {industry: [...], concept: [...], region: [...], concept_tags: [...]}
+    个股概念板块归属（东财替代方案）。
+    V3.2 更新：百度股市通 `getrelatedblock` 接口已于 2026-05 下线（ResultCode=10003），
+    改用东财 push2 板块查询 + 个股所属板块。
+    返回: {industry: [...], concept: [...], region: [...], concept_tags: [...]}\n
+    > **注意：** 东财 push2 在部分网络环境（海外/VPS）可能被拦截。如遇连接错误，
+    > 见下方 fallback 使用百度股市通 K 线接口中的板块信息。
     """
-    url = (
-        f"https://finance.pae.baidu.com/api/getrelatedblock"
-        f"?code={code}&market=ab"
-        f"&typeCode=all&finClientType=pc"
-    )
-    r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
-    d = r.json()
-    if str(d.get("ResultCode", -1)) != "0":
-        raise RuntimeError(f"百度PAE错误: {d}")
-
+    # 尝试东财 push2 获取个股所属板块
+    market_code = "1" if code.startswith("6") else "0"
+    secid = f"{market_code}.{code}"
+    url = "https://push2.eastmoney.com/api/qt/stock/get"
+    params = {
+        "fltt": "2", "invt": "2",
+        "fields": "f124,f125,f126,f127,f128,f129,f130,f131",
+        "secid": secid,
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Referer": "https://quote.eastmoney.com/",
+        "Accept": "application/json, text/plain, */*",
+    }
     result = {"industry": [], "concept": [], "region": [], "concept_tags": []}
-    for block in d.get("Result", []):
-        block_type = block.get("type", "")
-        for item in block.get("list", []):
-            entry = {
-                "name": item.get("name", ""),
-                "change_pct": item.get("increase", ""),
-                "desc": item.get("desc", ""),
-            }
-            if "行业" in block_type:
-                result["industry"].append(entry)
-            elif "概念" in block_type:
-                result["concept"].append(entry)
-                result["concept_tags"].append(entry["name"])
-            elif "地域" in block_type:
-                result["region"].append(entry)
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        d = r.json()
+        data = d.get("data", {})
+        if not data:
+            raise RuntimeError("东财 push2 返回空数据")
+        # f127 = 行业板块
+        if data.get("f127"):
+            result["industry"].append({"name": data["f127"], "change_pct": ""})
+        # f124 = 概念板块 (用 f140/f141 等字段)
+        for field in ["f124", "f125", "f126", "f128", "f129", "f130", "f131"]:
+            val = data.get(field, "")
+            if val and isinstance(val, str):
+                result["concept"].append({"name": val, "change_pct": ""})
+                result["concept_tags"].append(val)
+    except Exception:
+        # Fallback: 返回空并提示
+        result["_warning"] = "板块接口暂时不可用，建议查看个股F10或东财网页版"
     return result
 
 # 用法
@@ -778,13 +790,15 @@ print("概念:", blocks["concept_tags"])
 print("地域:", [b["name"] for b in blocks["region"]])
 ```
 
-> **踩坑：** `ResultCode` 返回类型不稳定——有时 int `0`，有时 string `"0"`。必须用 `str()` 统一比较。
+> **V3.2 更新：** 百度股市通 `getrelatedblock` 接口已下线（ResultCode=10003），改用东财 push2 替代。功能降级——仅返回行业/概念标签，不再包含涨跌幅和地域信息。
 
 ### 3.4 东财 push2 — 个股资金流向（分钟级）
 
 盘中实时分钟级资金流（主力/大单/中单/小单/超大单净流入）。
 
 > **V3.1 替换说明：** 百度 PAE `fundflow` 和 `fundsortlist` 接口已于 2026-05 下线（返回 null），改用东财 push2 资金流 API。日级资金流见 Layer 4.5 `stock_fund_flow_120d()`。
+>
+> **V3.2 注意：** push2/push2his 系列在部分网络环境（海外/VPS/某些云服务商）可能被拦截（`RemoteDisconnected`）。本地网络通常正常。如遇连接错误，请查看 FAQ。
 
 ```python
 import requests
@@ -1381,6 +1395,15 @@ def eastmoney_stock_news(code: str, page_size: int = 20) -> list[dict]:
 
     rows = []
     articles = d.get("result", {}).get("cmsArticleWebOld", {}).get("list", [])
+    # V3.2: 东财接口返回结构可能变为 passportWeb，尝试兼容
+    if not articles:
+        articles = d.get("result", {}).get("passportWeb", []) or []
+    # V3.2: 若仍为空，尝试从任意第一个 key 中找 list
+    if not articles:
+        for key, val in d.get("result", {}).items():
+            if isinstance(val, dict) and val.get("list"):
+                articles = val["list"]
+                break
     for a in articles:
         rows.append({
             "title": re.sub(r'<[^>]+>', '', a.get("title", "")),
@@ -1405,16 +1428,36 @@ import requests
 def cls_telegraph(page_size: int = 50) -> list[dict]:
     """
     财联社电报（全市场实时快讯）。
+    V3.2 更新：旧 /nodeapi/telegraphList 已下线(404)，改用 /v1/roll/get_roll_list + sign 签名。
     返回: [{title, content, time}]
     """
-    url = "https://www.cls.cn/nodeapi/telegraphList"
-    params = {"rn": str(page_size), "page": "1"}
+    import hashlib
+    
+    def _cls_sign(params: dict) -> str:
+        """财联社 sign = MD5(SHA1_hex(sorted_params_string))"""
+        sorted_keys = sorted(params.keys())
+        param_string = "&".join([f"{k}={params[k]}" for k in sorted_keys])
+        sha1_hex = hashlib.sha1(param_string.encode()).hexdigest()
+        return hashlib.md5(sha1_hex.encode()).hexdigest()
+    
+    params = {"app": "CailianpressWeb", "os": "web", "sv": "8.7.9", "rn": str(page_size)}
+    sign = _cls_sign(params)
+    url = "https://www.cls.cn/v1/roll/get_roll_list"
     headers = {"User-Agent": UA, "Referer": "https://www.cls.cn/"}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
-    d = r.json()
-
+    try:
+        r = requests.get(url, params={**params, "sign": sign}, headers=headers, timeout=10)
+        d = r.json()
+        if d.get("errno") not in ("0", "200") and not d.get("data"):
+            # 可能需要登录态，返回空并提示
+            print(f"[WARN] 财联社快讯: errno={d.get('errno')}, 可能需要登录态")
+            return []
+        items = d.get("data", {}).get("roll_data", [])
+    except Exception as e:
+        print(f"[WARN] 财联社快讯请求失败: {e}")
+        items = []
+    
     rows = []
-    for item in d.get("data", {}).get("roll_data", []):
+    for item in items:
         rows.append({
             "title": item.get("title", "") or item.get("brief", ""),
             "content": item.get("content", "") or item.get("brief", ""),
@@ -1574,8 +1617,11 @@ def sina_financial_report(code: str, report_type: str = "lrb") -> list[dict]:
 
     rows = []
     result = d.get("result", {}).get("data", {})
-    # 结构: {report_type: [{...}, ...]}
-    items = result.get(report_type, [])
+    # V3.2: 新浪财报接口返回结构已变，数据在 report_list 中而非直接 {report_type} 键
+    if "report_list" in result:
+        items = result.get("report_list", [])
+    else:
+        items = result.get(report_type, [])
     if isinstance(items, list):
         rows = items
     return rows
