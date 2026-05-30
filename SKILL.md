@@ -1,18 +1,22 @@
 ---
 name: a-stock-data
-description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
+description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财个股+全球资讯)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。优先用通达信(mootdx)/腾讯(不封IP)，东财接口已内置限流防封。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
 origin: custom
-version: 3.1
+version: 3.2
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V3.1
+# A股全栈数据工具包 V3.2
 
-七层数据架构，28 个端点，全部实测可用（2026-05-19 验证，覆盖主板/中小板/科创板/ST）。
+七层数据架构，27 个端点实测可用（2026-05 验证；财联社快讯已下线，详见 §5.2），覆盖主板/中小板/科创板/ST。
 
+> **V3.2（防封 + 失效修复）：**
+> - **数据源优先级 + 东财防封**：明确「通达信(mootdx)/腾讯不封IP 优先用，东财仅用于其独有数据」原则；新增统一节流入口 `em_get()`，所有东财接口内置串行限流（间隔≥1s+随机抖动）+ 会话复用，AI 抄代码即自带防封。详见「数据源优先级 & 东财防封」章节。
+> - **财联社快讯下线（#14）**：`cls.cn` 旧 API 全面 404，标注弃用并改用东财全球资讯。
+>
 > **V3.1 修复：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易 RPT 报表名更新、机构席位改用 BUY/SELL 明细筛选）+ 修复东财全球资讯 req_trace 参数 + 修复巨潮公告 orgId 格式。
 >
 > **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。
@@ -49,8 +53,8 @@ version: 3.1
 
 新闻层
 ├── 东财个股新闻   → 个股相关新闻 (search-api-web JSONP)
-├── 财联社快讯     → 全市场实时电报 (cls.cn)
-└── 东财全球资讯   → 7×24 财经快讯 (np-weblist)
+├── 财联社快讯     → ⚠️ 已下线 (cls.cn 迁 Next.js，旧API 404)
+└── 东财全球资讯   → 7×24 财经快讯 (np-weblist，财联社替代)
 
 基础数据层
 ├── mootdx finance → 季报快照 (37字段, EPS/ROE/净利)
@@ -62,6 +66,53 @@ version: 3.1
 ├── 巨潮 cninfo    → 公告全文检索+下载 (cninfo.com.cn)
 └── mootdx F10     → 最新公告摘要
 ```
+
+## 数据源优先级 & 东财防封（重要，先读）
+
+### 优先级原则：能用通达信/腾讯，就别用东财
+
+| 优先级 | 数据源 | 协议 | 封 IP 风险 | 覆盖 |
+|--------|--------|------|-----------|------|
+| **1（首选）** | **mootdx（通达信）** | TCP 7709 二进制 | **不封 IP** | K线、五档盘口、逐笔成交、财务快照、F10 |
+| **2** | **腾讯财经** | HTTP GBK | **不封 IP** | 实时价、PE/PB/市值/换手率/涨跌停、指数、ETF |
+| **3** | 新浪 / 巨潮 / 同花顺 | HTTP | 低 | 财报三表、公告、一致预期/热点 |
+| **4（仅独有数据才用）** | **东财 eastmoney** | HTTP | **有风控，会封 IP** | 见下 |
+
+**凡是行情 / K线 / 实时价 / 市值 / 财务三表能从 mootdx 或腾讯拿到的，一律走它们**——TCP 协议和腾讯接口实测不封 IP，可放心高频调用。
+
+### 东财只用于它「独有、别处拿不到」的数据
+
+下列数据**只有东财有**，通达信/腾讯/新浪都没有，必须用东财（但要限流）：
+
+> 龙虎榜席位 · 全市场龙虎榜 · 限售解禁日历 · 融资融券 · 大宗交易 · 股东户数 · 分红送转 · 个股资金流向（分钟/日级）· 行业板块排名 · 研报列表/PDF · 个股新闻 · 全球资讯
+
+### 东财风控阈值（社区实测，2026-05）
+
+| 行为 | 触发封禁的阈值 | 风险 |
+|------|---------------|------|
+| 每秒请求数 | > 5 次/秒 | 高 |
+| 单 IP 并发连接 | ≥ 10 | 高 |
+| 1 分钟请求总数 | ≥ 200 次 | 中高 |
+| 5 分钟请求总数 | ≥ 300 次 | 触发封禁 |
+| User-Agent | 空 UA / 无浏览器特征 | 中 |
+
+被封表现：连续请求后 `403` / `429` / 连接超时 / 返回空数据。临时封禁通常几分钟到几小时。
+
+### 防封铁律（调用东财时必须遵守）
+
+1. **串行，不并发**——绝不对东财开多线程/协程并发请求
+2. **每次间隔 ≥ 1 秒 + 随机抖动**（QPS ≤ 2），批量筛选时调大到 1.5~2 秒
+3. **复用 HTTP 会话**（Keep-Alive），不要每次新建连接
+4. **带正常 UA + Referer**（本 SKILL 各端点已配好）
+5. **批量场景每只股票之间 sleep**——AI 跑批量循环（如筛选 100 只股逐个拉龙虎榜/资金流）是被封的头号元凶
+
+### 已内置限流：所有东财请求走 `em_get()`
+
+本 SKILL 提供统一的节流入口 `em_get()`（定义见下方「东财数据中心统一查询（共用 helper）」），它自动做到：串行限流（最小间隔 `EM_MIN_INTERVAL=1.0s` + 随机抖动）+ 复用 `EM_SESSION`（Keep-Alive）+ 默认 UA。**所有 `eastmoney.com` 端点的代码块都已改用 `em_get` 而非裸 `requests.get`**，AI 直接抄代码即自带防封。批量任务把 `EM_MIN_INTERVAL` 调大即可进一步降速。
+
+> 注：`em_get` / `EM_SESSION` / `EM_MIN_INTERVAL` 是所有东财代码块共用的前置定义，使用任一东财端点前需先执行「共用 helper」代码块。
+
+---
 
 ## When to Activate
 
@@ -146,22 +197,46 @@ def get_prefix(code: str) -> str:
 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用同一 base URL：
 
 ```python
+import time
+import random
 import requests
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 
+# ── 东财防封：全局节流 + 会话复用 ────────────────────────────────────
+# 东财系 HTTP 接口（push2 / datacenter / reportapi / search / np-weblist）有风控：
+#   每秒 >5 次 / 单 IP 并发 ≥10 / 1 分钟 ≥200 次  →  临时封 IP。
+# 所有 eastmoney.com 请求一律走 em_get()：串行限流（最小间隔 + 随机抖动）+ 复用
+# Keep-Alive 会话，批量调用时自动降速，避免被封。详见「数据源优先级 & 东财防封」章节。
+EM_SESSION = requests.Session()
+EM_SESSION.headers.update({"User-Agent": UA})
+EM_MIN_INTERVAL = 1.0          # 两次东财请求最小间隔(秒)；批量筛选建议调大到 1.5~2
+_em_last_call = [0.0]          # 模块级上次请求时间戳
+
+def em_get(url: str, params: dict | None = None, headers: dict | None = None,
+           timeout: int = 15, **kwargs):
+    """东财统一请求入口：自动节流 + 复用 session + 默认 UA。
+    所有 eastmoney.com 接口都应通过它请求，避免高频被封 IP。"""
+    wait = EM_MIN_INTERVAL - (time.time() - _em_last_call[0])
+    if wait > 0:
+        time.sleep(wait + random.uniform(0.1, 0.5))
+    try:
+        return EM_SESSION.get(url, params=params, headers=headers, timeout=timeout, **kwargs)
+    finally:
+        _em_last_call[0] = time.time()
+
 def eastmoney_datacenter(report_name: str, columns: str = "ALL",
                           filter_str: str = "", page_size: int = 50,
                           sort_columns: str = "", sort_types: str = "-1") -> list[dict]:
-    """东财数据中心统一查询 — 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用"""
+    """东财数据中心统一查询 — 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用（已内置限流）"""
     params = {
         "reportName": report_name, "columns": columns,
         "filter": filter_str, "pageNumber": "1", "pageSize": str(page_size),
         "sortColumns": sort_columns, "sortTypes": sort_types,
         "source": "WEB", "client": "WEB",
     }
-    r = requests.get(DATACENTER_URL, params=params, headers={"User-Agent": UA}, timeout=15)
+    r = em_get(DATACENTER_URL, params=params, timeout=15)
     d = r.json()
     if d.get("result") and d["result"].get("data"):
         return d["result"]["data"]
@@ -360,8 +435,6 @@ UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
 def eastmoney_reports(code: str, max_pages: int = 5) -> list[dict]:
     """拉取指定股票的研报列表"""
-    session = requests.Session()
-    session.headers.update({"User-Agent": UA, "Referer": "https://data.eastmoney.com/"})
     all_records = []
     for page in range(1, max_pages + 1):
         params = {
@@ -372,7 +445,8 @@ def eastmoney_reports(code: str, max_pages: int = 5) -> list[dict]:
             "orgCode": "", "code": code, "rcode": "",
             "p": str(page), "pageNum": str(page), "pageNumber": str(page),
         }
-        r = session.get(REPORT_API, params=params, timeout=30)
+        r = em_get(REPORT_API, params=params,
+                   headers={"Referer": "https://data.eastmoney.com/"}, timeout=30)  # 已内置限流
         d = r.json()
         rows = d.get("data") or []
         if not rows:
@@ -380,7 +454,6 @@ def eastmoney_reports(code: str, max_pages: int = 5) -> list[dict]:
         all_records.extend(rows)
         if page >= (d.get("TotalPage", 1) or 1):
             break
-        time.sleep(0.3)
     return all_records
 
 def download_pdf(record: dict, target_dir: str = "./reports") -> str | None:
@@ -396,7 +469,7 @@ def download_pdf(record: dict, target_dir: str = "./reports") -> str | None:
     if target.exists():
         return str(target)
     url = PDF_TPL.format(info_code=info_code)
-    r = requests.get(url, headers={"User-Agent": UA, "Referer": "https://data.eastmoney.com/"}, timeout=60)
+    r = em_get(url, headers={"Referer": "https://data.eastmoney.com/"}, timeout=60)
     if r.status_code == 200 and len(r.content) >= 1024:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(r.content)
@@ -809,7 +882,7 @@ def eastmoney_fund_flow_minute(code: str) -> list[dict]:
         "Origin": "https://quote.eastmoney.com",
     }
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=10)
+        r = em_get(url, params=params, headers=headers, timeout=10)
         d = r.json()
     except Exception as e:
         print(f"[WARN] push2 资金流请求失败: {e}")
@@ -1021,7 +1094,7 @@ def industry_comparison(top_n: int = 20) -> dict:
         "fields": "f2,f3,f4,f12,f13,f14,f104,f105,f128,f136,f140,f141,f207",
     }
     headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
+    r = em_get(url, params=params, headers=headers, timeout=15)
     d = r.json()
     items = d.get("data", {}).get("diff", [])
     if not items:
@@ -1309,7 +1382,7 @@ def stock_fund_flow_120d(code: str) -> list[dict]:
         "Origin": "https://quote.eastmoney.com",
     }
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=15)
+        r = em_get(url, params=params, headers=headers, timeout=15)
         d = r.json()
     except Exception as e:
         print(f"[WARN] push2 资金流请求失败: {e}")
@@ -1372,7 +1445,7 @@ def eastmoney_stock_news(code: str, page_size: int = 20) -> list[dict]:
     }, separators=(',', ':'))
     params = {"cb": cb, "param": inner_params}
     headers = {"User-Agent": UA, "Referer": "https://so.eastmoney.com/"}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
+    r = em_get(url, params=params, headers=headers, timeout=15)
 
     # 解析 JSONP
     text = r.text
@@ -1397,7 +1470,12 @@ for n in news[:5]:
     print(f"  {n['time']} | {n['source']} | {n['title']}")
 ```
 
-### 5.2 财联社快讯（直连 cls.cn）
+### 5.2 财联社快讯（直连 cls.cn）— ⚠️ 已下线，改用 §5.3
+
+> **⚠️ 2026-05 已失效（#14）：** 财联社网站迁移到 Next.js 架构，旧版公开接口
+> `cls.cn/nodeapi/telegraphList` 全面下线（返回 404），新版 API 需签名认证，无法
+> 公开 HTTP 调用。**全市场实时快讯请改用 §5.3「东财全球资讯」**（7×24 滚动，免费无 key）。
+> 下面代码仅作历史参考，已不可用。
 
 ```python
 import requests
@@ -1448,7 +1526,7 @@ def eastmoney_global_news(page_size: int = 50) -> list[dict]:
         "req_trace": str(uuid.uuid4()),
     }
     headers = {"User-Agent": UA, "Referer": "https://kuaixun.eastmoney.com/"}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
+    r = em_get(url, params=params, headers=headers, timeout=10)
     d = r.json()
 
     rows = []
@@ -1527,7 +1605,7 @@ def eastmoney_stock_info(code: str) -> dict:
         "secid": f"{market_code}.{code}",
     }
     headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
+    r = em_get(url, params=params, headers=headers, timeout=10)
     d = r.json().get("data", {})
     return {
         "code": d.get("f57", ""),

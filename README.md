@@ -1,10 +1,12 @@
 # a-stock-data
 
-A 股全栈数据工具包 — 7 层架构 · 28 个端点 · 13 个数据源 · 零第三方数据封装依赖
+A 股全栈数据工具包 — 7 层架构 · 27 个端点 · 13 个数据源 · 零第三方数据封装依赖
 
 一个自包含的 Skill 文件，把分散在 13 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。
 
-> **V3.1 修复（2026-05-19）：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易/机构席位报表名更新）+ 修复东财全球资讯和巨潮公告参数变更。全部 28 端点实测通过。
+> **V3.2（2026-05-30）：** ① **数据源优先级 + 东财防封**——优先用通达信(mootdx)/腾讯（不封 IP），东财仅用于其独有数据，并新增统一节流入口 `em_get()`，所有东财接口内置串行限流（间隔≥1s+随机抖动）+ 会话复用，AI 抄代码即自带防封；② **财联社快讯下线（#14）**——`cls.cn` 旧 API 全面 404，改用东财全球资讯。
+>
+> **V3.1 修复（2026-05-19）：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易/机构席位报表名更新）+ 修复东财全球资讯和巨潮公告参数变更。
 >
 > **V3.0 Breaking Change：** 彻底移除 akshare 依赖，所有数据源改为直连 HTTP API。新增资金面/筹码层。
 
@@ -17,14 +19,14 @@ A 股全栈数据工具包 — 7 层架构 · 28 个端点 · 13 个数据源 ·
 ## 架构
 
 ```
-A 股全栈数据 · 七层架构 · V3.1
-│
+A 股全栈数据 · 七层架构 · V3.2
+│  （优先级：mootdx/腾讯 不封IP 优先用；东财仅用于独有数据，已内置限流防封）
 ├── 行情层    mootdx + 腾讯财经 + 百度K线   K线(带MA5/10/20) + 五档盘口 + PE/PB/市值 + 指数/ETF
 ├── 研报层    东财 reportapi + 同花顺 + iwencai  研报列表 / PDF下载 / 一致预期 / NL搜索
 ├── 信号层    同花顺 + 百度股市通 + 东财     强势股 + 题材归因 + 北向资金 + 概念板块
 │                                           + 资金流向(push2) + 龙虎榜 + 全市场龙虎榜 + 解禁 + 行业对比
 ├── 资金面    东财 datacenter + push2        融资融券 + 大宗交易 + 股东户数 + 分红送转 + 资金流(分钟+120日)
-├── 新闻层    东财 + 财联社（直连HTTP）      个股新闻 / 财联社快讯 / 全球资讯
+├── 新闻层    东财（直连HTTP）              个股新闻 / 全球资讯（财联社快讯已下线）
 ├── 基础数据  mootdx + 东财 + 新浪           季报37字段 / F10九大类 / 财报三表
 └── 公告层    巨潮 cninfo + mootdx           沪深北全量公告
 ```
@@ -53,7 +55,7 @@ pip install mootdx requests pandas stockstats
 
 ---
 
-## 28 个端点能力清单
+## 27 个端点能力清单
 
 ### 行情层（实时，不封 IP）
 
@@ -101,8 +103,8 @@ pip install mootdx requests pandas stockstats
 | 端点 | 数据 |
 |------|------|
 | 个股新闻 | 东财个股新闻流（直连 search-api-web） |
-| 财联社快讯 | 分钟级电报（直连 cls.cn） |
-| 全球资讯 | 东财全球财经资讯（直连 np-weblist） |
+| ~~财联社快讯~~ | ⚠️ 已下线（cls.cn 迁 Next.js，旧 API 404，#14）→ 用全球资讯替代 |
+| 全球资讯 | 东财全球财经资讯（直连 np-weblist，7×24） |
 
 ### 基础数据 + 公告
 
@@ -154,37 +156,34 @@ pip install mootdx requests pandas stockstats
 
 ---
 
-## V3.1 亮点
+## V3.2 亮点
 
 | 变化 | 说明 |
 |------|------|
-| **4 个失效接口替换** | 百度 PAE 资金流→东财 push2，大宗交易/机构席位报表名更新，全部实测通过 |
-| **东财全球资讯修复** | 新增必填参数 `req_trace`（UUID），否则返回 403 |
-| **巨潮公告修复** | `stock` 参数格式从 `code,plate` 更新为 `code,orgId`（如 `600519,gssh0600519`） |
-| **资金流统一东财** | 信号层资金流从百度切到东财 push2，与资金面层统一数据源 |
-| **28 端点全量实测** | 2026-05-19 全部 28 端点通过贵州茅台 600519 验证 |
+| **数据源优先级原则** | 明确「能用通达信(mootdx)/腾讯就别用东财」——前两者 TCP/HTTP 实测不封 IP，可放心高频；东财仅用于其独有数据 |
+| **东财统一限流防封** | 新增节流入口 `em_get()`，所有东财端点（datacenter/push2/reportapi/search/np-weblist）改用它，内置串行限流（间隔≥1s+随机抖动）+ 会话复用，批量抄代码即自带防封 |
+| **东财风控阈值文档化** | SKILL 新增「数据源优先级 & 东财防封」章节，列出触发封禁的阈值（每秒>5/并发≥10/1分≥200/5分≥300）与防封铁律 |
+| **财联社快讯下线（#14）** | `cls.cn` 旧 API 全面 404，标注弃用，改用东财全球资讯 |
 
 ---
 
-## 数据源优先级
+## 数据源优先级（V3.2 重排，按封 IP 风险）
 
-| 优先级 | 数据源 | 协议 | 封 IP 风险 |
-|--------|--------|------|-----------|
-| 1 | mootdx | TCP (7709) | 极低 |
-| 2 | 腾讯财经 | HTTP | 低 |
-| 3 | 东财 datacenter | HTTP | 低 |
-| 4 | 东财 push2/push2his | HTTP | 低 |
-| 5 | iwencai | OpenAPI | 低（需 Key） |
-| 6 | 东财 reportapi/PDF | HTTP | 低 |
-| 7 | 同花顺热点 | HTTP | 极低（零鉴权） |
-| 8 | 同花顺北向 | HTTP | 极低（零鉴权） |
-| 9 | 百度股市通 | HTTP | 极低（概念板块+K线） |
-| 10 | 新浪财经 | HTTP | 低 |
-| 11 | 同花顺一致预期 | HTTP | 低（需UA） |
-| 12 | 财联社 | HTTP | 低 |
-| 13 | 巨潮 cninfo | HTTP | 低 |
+> **原则：行情/K线/实时价/市值/财务能从 mootdx 或腾讯拿到的，一律优先用它们（不封 IP）。东财只用于它独有、别处拿不到的数据，且全部走 `em_get()` 内置限流。**
 
-> **架构原则：** 除 mootdx（TCP 二进制协议）外，全部直连 HTTP API，零第三方数据封装依赖。V3.1 起资金流统一走东财 push2。
+| 优先级 | 数据源 | 协议 | 封 IP 风险 | 用途 |
+|--------|--------|------|-----------|------|
+| **1（首选）** | mootdx（通达信） | TCP 7709 | **不封 IP** | K线/五档/逐笔/财务快照/F10 |
+| **2（首选）** | 腾讯财经 | HTTP | **不封 IP** | 实时价/PE/PB/市值/换手率/涨跌停/指数/ETF |
+| 3 | 同花顺热点/北向 | HTTP | 极低（零鉴权） | 强势股/题材归因/北向资金 |
+| 4 | 百度股市通 | HTTP | 极低 | 概念板块/K线 |
+| 5 | 新浪财经 | HTTP | 低 | 财报三表 |
+| 6 | 巨潮 cninfo | HTTP | 低 | 公告全文 |
+| 7 | 同花顺一致预期 | HTTP | 低（需 UA） | EPS 一致预期 |
+| 8 | iwencai | OpenAPI | 低（需 Key） | NL 语义搜索 |
+| **末位（仅独有数据）** | **东财** datacenter/push2/reportapi/search/np-weblist | HTTP | **中 — 有风控会封 IP** | 龙虎榜/解禁/两融/大宗/股东户数/分红/资金流/研报/个股新闻/全球资讯（已统一走 `em_get()` 限流） |
+
+> **架构原则：** 除 mootdx（TCP 二进制协议）外，全部直连 HTTP API，零第三方数据封装依赖。**东财系接口有访问频率风控，所有调用统一经 `em_get()` 串行限流防封；批量任务请调大 `EM_MIN_INTERVAL`。**
 
 ---
 
@@ -263,11 +262,13 @@ V2.1 改为本地自缓存。每次调用自动积累，越跑越丰富。首次
 
 # a-stock-data
 
-Full-stack data toolkit for China A-Share market — 7-layer architecture · 28 endpoints · 13 data sources · zero third-party data wrapper dependencies
+Full-stack data toolkit for China A-Share market — 7-layer architecture · 27 endpoints · 13 data sources · zero third-party data wrapper dependencies
 
 A self-contained Skill file that consolidates raw A-share data from 13 sources into a ready-to-use toolkit for AI coding assistants. No need to memorize mootdx candlestick parameters, Eastmoney PDF Referer headers, or iwencai X-Claw authentication — it's all handled.
 
-> **V3.1 Fix (2026-05-19):** Replaced 4 broken endpoints (Baidu PAE fund flow → Eastmoney push2, block trade/institution report name updates) + fixed Eastmoney global news and cninfo filing parameter changes. All 28 endpoints verified.
+> **V3.2 (2026-05-30):** ① **Data-source priority + Eastmoney anti-ban** — prefer mootdx (TDX) / Tencent (never IP-banned); use Eastmoney only for its exclusive data, all routed through a new throttled `em_get()` (serial rate-limit ≥1s + jitter + session reuse) so copied code is ban-safe by default. ② **Cailianpress (cls.cn) deprecated (#14)** — old API returns 404, replaced by Eastmoney global news.
+>
+> **V3.1 Fix (2026-05-19):** Replaced 4 broken endpoints (Baidu PAE fund flow → Eastmoney push2, block trade/institution report name updates) + fixed Eastmoney global news and cninfo filing parameter changes.
 >
 > **V3.0 Breaking Change:** Completely removed akshare dependency. All data sources now use direct HTTP API calls. Added capital flow / ownership layer.
 
@@ -280,14 +281,14 @@ A self-contained Skill file that consolidates raw A-share data from 13 sources i
 ## Architecture
 
 ```
-China A-Share Full-Stack Data · 7-Layer Architecture · V3.1
-│
+China A-Share Full-Stack Data · 7-Layer Architecture · V3.2
+│  (Priority: prefer mootdx/Tencent — never IP-banned; Eastmoney only for exclusive data, with built-in throttling)
 ├── Market Data    mootdx + Tencent + Baidu K-line   Candlesticks (w/ MA5/10/20) + Order Book + PE/PB + Index/ETF
 ├── Research       Eastmoney + THS + iwencai          Report list / PDF / Consensus EPS / NL search
 ├── Signals        THS + Baidu + Eastmoney            Hot stocks + Sector attribution + Northbound flow
 │                                                     + Concept blocks + Fund flow(push2) + Dragon Tiger + Lockup + Industry
 ├── Capital Flow   Eastmoney datacenter + push2       Margin trading + Block trades + Holder count + Dividends + Fund flow(min+120d)
-├── News           Eastmoney + CLS (direct HTTP)      Stock news / CLS flash / Global finance
+├── News           Eastmoney (direct HTTP)            Stock news / Global finance (CLS flash deprecated)
 ├── Fundamentals   mootdx + Eastmoney + Sina          37-field quarterly + F10 9 categories + Financial statements
 └── Filings        cninfo + mootdx                    Full filings across SSE / SZSE / BSE
 ```
@@ -316,7 +317,7 @@ Launch Claude Code and say "Check the valuation of 688017" — the skill activat
 
 ---
 
-## 28 Endpoints
+## 27 Endpoints
 
 ### Market Data (real-time, no IP ban)
 
@@ -364,8 +365,8 @@ Launch Claude Code and say "Check the valuation of 688017" — the skill activat
 | Endpoint | Data |
 |----------|------|
 | Stock News | Eastmoney per-stock news (direct search-api-web) |
-| CLS Flash | Minute-level telegrams (direct cls.cn) |
-| Global News | Eastmoney global finance news (direct np-weblist) |
+| ~~CLS Flash~~ | ⚠️ Deprecated (cls.cn migrated to Next.js, old API 404, #14) → use Global News |
+| Global News | Eastmoney global finance news (direct np-weblist, 7×24) |
 
 ### Fundamentals + Filings
 
@@ -417,37 +418,34 @@ Just tell your AI assistant:
 
 ---
 
-## V3.1 Highlights
+## V3.2 Highlights
 
 | Change | Description |
 |--------|-------------|
-| **4 Broken Endpoints Replaced** | Baidu PAE fund flow → Eastmoney push2, block trade/institution report names updated |
-| **Eastmoney Global News Fixed** | Added required `req_trace` UUID parameter (returns 403 without it) |
-| **cninfo Filings Fixed** | `stock` param format updated from `code,plate` to `code,orgId` |
-| **Unified Fund Flow Source** | Signal layer fund flow moved from Baidu to Eastmoney push2, unified with Capital Flow layer |
-| **All 28 Endpoints Verified** | Full test pass on 2026-05-19 against Kweichow Moutai (600519) |
+| **Data-source priority principle** | Prefer mootdx (TDX) / Tencent — both never IP-banned in practice, safe for high-frequency use. Use Eastmoney only for its exclusive data |
+| **Unified Eastmoney throttling** | New `em_get()` entry point; all Eastmoney endpoints (datacenter/push2/reportapi/search/np-weblist) route through it with built-in serial rate-limit (≥1s + jitter) + session reuse — copied code is ban-safe by default |
+| **Eastmoney rate-limit documented** | New "Data-source priority & Eastmoney anti-ban" section lists ban thresholds (>5/s, ≥10 concurrent, ≥200/min, ≥300/5min) and anti-ban rules |
+| **Cailianpress deprecated (#14)** | cls.cn old API returns 404 — marked deprecated, replaced by Eastmoney global news |
 
 ---
 
-## Data Source Priority
+## Data Source Priority (V3.2 re-ranked by IP-ban risk)
 
-| Priority | Source | Protocol | IP Ban Risk |
-|----------|--------|----------|-------------|
-| 1 | mootdx | TCP (7709) | Very low |
-| 2 | Tencent Finance | HTTP | Low |
-| 3 | Eastmoney datacenter | HTTP | Low |
-| 4 | Eastmoney push2/push2his | HTTP | Low |
-| 5 | iwencai | OpenAPI | Low (key required) |
-| 6 | Eastmoney reportapi/PDF | HTTP | Low |
-| 7 | THS Hot Stocks | HTTP | Very low (zero auth) |
-| 8 | THS Northbound | HTTP | Very low (zero auth) |
-| 9 | Baidu Finance | HTTP | Very low (concept blocks + K-line) |
-| 10 | Sina Finance | HTTP | Low |
-| 11 | THS Consensus EPS | HTTP | Low (UA required) |
-| 12 | CLS (Cailian Press) | HTTP | Low |
-| 13 | cninfo | HTTP | Low |
+> **Principle: anything available from mootdx or Tencent (quotes / K-line / live price / market cap / financials) must use them first (never IP-banned). Eastmoney is only for its exclusive data, all routed through the throttled `em_get()`.**
 
-> **Architecture:** Except mootdx (TCP binary protocol), all sources use direct HTTP API calls. Zero third-party data wrapper dependencies. Fund flow unified on Eastmoney push2 since V3.1.
+| Priority | Source | Protocol | IP Ban Risk | Use |
+|----------|--------|----------|-------------|-----|
+| **1 (top)** | mootdx (TDX) | TCP 7709 | **Never banned** | K-line / order book / ticks / financials / F10 |
+| **2 (top)** | Tencent Finance | HTTP | **Never banned** | Live price / PE / PB / market cap / turnover / index / ETF |
+| 3 | THS Hot Stocks / Northbound | HTTP | Very low (zero auth) | Hot stocks / themes / northbound flow |
+| 4 | Baidu Finance | HTTP | Very low | Concept blocks / K-line |
+| 5 | Sina Finance | HTTP | Low | Financial statements |
+| 6 | cninfo | HTTP | Low | Filings |
+| 7 | THS Consensus EPS | HTTP | Low (UA required) | Consensus EPS |
+| 8 | iwencai | OpenAPI | Low (key required) | NL semantic search |
+| **last (exclusive only)** | **Eastmoney** datacenter/push2/reportapi/search/np-weblist | HTTP | **Medium — has rate-limit risk** | Dragon-tiger / lockup / margin / block trade / shareholders / dividends / fund flow / reports / news (all via `em_get()`) |
+
+> **Architecture:** Except mootdx (TCP binary protocol), all sources use direct HTTP API calls, zero third-party data wrapper dependencies. **Eastmoney APIs are rate-limited; all calls go through `em_get()` for serial throttling. For batch jobs, increase `EM_MIN_INTERVAL`.**
 
 ---
 
