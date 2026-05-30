@@ -1353,7 +1353,7 @@ def cls_telegraph(page_size: int = 50) -> list[dict]:
     try:
         r = requests.get(url, params={**params, "sign": sign}, headers=headers, timeout=10)
         d = r.json()
-        if d.get("errno") not in ("0", "200") and not d.get("data"):
+        if str(d.get("errno")) not in ("0", "200") and not d.get("data"):
             # 可能需要登录态，返回空并提示
             print(f"[WARN] 财联社快讯: errno={d.get('errno')}, 可能需要登录态")
             return []
