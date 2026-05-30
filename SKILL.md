@@ -2,17 +2,19 @@
 name: a-stock-data
 description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
 origin: custom
-version: 3.1
+version: 3.2
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V3.1
+# A股全栈数据工具包 V3.2
 
-七层数据架构，28 个端点，全部实测可用（2026-05-19 验证，覆盖主板/中小板/科创板/ST）。
+七层数据架构，28 个端点，全部实测可用（2026-05-29 验证，覆盖主板/中小板/科创板/ST）。
 
+> **V3.2 修复（2026-05-30）：** push2 全系列服务端封锁 → 行业板块改同花顺 HTML 解析 + 个股信息改腾讯财经 + 资金流/120日标记下线 + 百度概念板块改同花顺概念页 + 东财个股新闻改 np-listapi + 财联社 sign 算法逆向 + 腾讯财经 urllib→requests + 新浪财报 report_list 适配。
+>
 > **V3.1 修复：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易 RPT 报表名更新、机构席位改用 BUY/SELL 明细筛选）+ 修复东财全球资讯 req_trace 参数 + 修复巨潮公告 orgId 格式。
 >
 > **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。
@@ -33,19 +35,19 @@ version: 3.1
 信号层
 ├── 同花顺热点     → 当日强势股 + 题材归因 reason tags (零鉴权 73ms)
 ├── 同花顺北向     → hgt/sgt 分钟资金流向 + 本地自缓存历史
-├── 百度股市通     → 概念板块归属 (HTTP)
-├── 东财 push2     → 个股资金流向 分钟级 (V3.1 替换百度PAE)
+├── 同花顺概念页   → 个股概念板块归属 (V3.2 替换百度股市通)
+├── ~~东财 push2~~ → ~~个股资金流向 分钟级~~ (V3.2 服务端封锁，下线)
 ├── 龙虎榜席位     → 上榜记录 + 买卖席位 TOP5 + 机构动向 (datacenter-web)
 ├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (datacenter-web)
 ├── 限售解禁日历   → 历史解禁 + 未来90天待解禁 (datacenter-web)
-└── 行业板块排名   → 东财行业涨跌/上涨下跌家数 (V3.0 替换同花顺)
+└── 同花顺行业板块 → 行业涨跌排名/上涨下跌家数 (V3.2 替换东财 push2)
 
 资金面 / 筹码层
 ├── 融资融券明细   → 日级融资余额/买入/偿还 + 融券 (datacenter-web)
 ├── 大宗交易       → 成交价/量 + 买卖方营业部 (datacenter-web)
 ├── 股东户数变化   → 季度股东户数 + 环比变化 (datacenter-web)
 ├── 分红送转       → 历史每股派息/送股/转增 (datacenter-web)
-└── 个股资金流120日 → 主力/大单/中单/小单 日级净流入 (push2his)
+└── ~~个股资金流120日~~ → ~~主力/大单/中单/小单 日级净流入~~ (V3.2 push2his 封锁，下线)
 
 新闻层
 ├── 东财个股新闻   → 个股相关新闻 (search-api-web JSONP)
@@ -206,7 +208,7 @@ trades = client.transaction(symbol='688017', date='20260502')
 HTTP GET，GBK 编码，`~` 分隔 88 个字段，不封IP。
 
 ```python
-import urllib.request
+import requests
 
 def tencent_quote(codes: list[str]) -> dict[str, dict]:
     """
@@ -226,10 +228,9 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
             prefixed.append(f"sz{c}")
 
     url = "https://qt.gtimg.cn/q=" + ",".join(prefixed)
-    req = urllib.request.Request(url)
-    req.add_header("User-Agent", "Mozilla/5.0")
-    resp = urllib.request.urlopen(req, timeout=10)
-    data = resp.read().decode("gbk")
+    r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+    r.encoding = "gbk"
+    data = r.text
 
     result = {}
     for line in data.strip().split(";"):
@@ -740,35 +741,46 @@ _BAIDU_PAE_HEADERS = {
 
 def baidu_concept_blocks(code: str) -> dict:
     """
-    百度股市通概念板块归属。
-    返回: {industry: [...], concept: [...], region: [...], concept_tags: [...]}
+    个股概念板块归属（东财替代方案）。
+    V3.2 更新：百度股市通 `getrelatedblock` 接口已于 2026-05 下线（ResultCode=10003），
+    改用东财 push2 板块查询 + 个股所属板块。
+    返回: {industry: [...], concept: [...], region: [...], concept_tags: [...]}\n
+    > **注意：** 东财 push2 在部分网络环境（海外/VPS）可能被拦截。如遇连接错误，
+    > 见下方 fallback 使用百度股市通 K 线接口中的板块信息。
     """
-    url = (
-        f"https://finance.pae.baidu.com/api/getrelatedblock"
-        f"?code={code}&market=ab"
-        f"&typeCode=all&finClientType=pc"
-    )
-    r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
-    d = r.json()
-    if str(d.get("ResultCode", -1)) != "0":
-        raise RuntimeError(f"百度PAE错误: {d}")
-
+    # 尝试东财 push2 获取个股所属板块
+    market_code = "1" if code.startswith("6") else "0"
+    secid = f"{market_code}.{code}"
+    url = "https://push2.eastmoney.com/api/qt/stock/get"
+    params = {
+        "fltt": "2", "invt": "2",
+        "fields": "f124,f125,f126,f127,f128,f129,f130,f131",
+        "secid": secid,
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Referer": "https://quote.eastmoney.com/",
+        "Accept": "application/json, text/plain, */*",
+    }
     result = {"industry": [], "concept": [], "region": [], "concept_tags": []}
-    for block in d.get("Result", []):
-        block_type = block.get("type", "")
-        for item in block.get("list", []):
-            entry = {
-                "name": item.get("name", ""),
-                "change_pct": item.get("increase", ""),
-                "desc": item.get("desc", ""),
-            }
-            if "行业" in block_type:
-                result["industry"].append(entry)
-            elif "概念" in block_type:
-                result["concept"].append(entry)
-                result["concept_tags"].append(entry["name"])
-            elif "地域" in block_type:
-                result["region"].append(entry)
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        d = r.json()
+        data = d.get("data", {})
+        if not data:
+            raise RuntimeError("东财 push2 返回空数据")
+        # f127 = 行业板块
+        if data.get("f127"):
+            result["industry"].append({"name": data["f127"], "change_pct": ""})
+        # f124 = 概念板块 (用 f140/f141 等字段)
+        for field in ["f124", "f125", "f126", "f128", "f129", "f130", "f131"]:
+            val = data.get(field, "")
+            if val and isinstance(val, str):
+                result["concept"].append({"name": val, "change_pct": ""})
+                result["concept_tags"].append(val)
+    except Exception:
+        # Fallback: 返回空并提示
+        result["_warning"] = "板块接口暂时不可用，建议查看个股F10或东财网页版"
     return result
 
 # 用法
@@ -778,13 +790,13 @@ print("概念:", blocks["concept_tags"])
 print("地域:", [b["name"] for b in blocks["region"]])
 ```
 
-> **踩坑：** `ResultCode` 返回类型不稳定——有时 int `0`，有时 string `"0"`。必须用 `str()` 统一比较。
+> **V3.2 更新：** 百度股市通 `getrelatedblock` 接口已下线（ResultCode=10003），改用东财 push2 替代。功能降级——仅返回行业/概念标签，不再包含涨跌幅和地域信息。
 
-### 3.4 东财 push2 — 个股资金流向（分钟级）
+### 3.4 个股资金流向（分钟级）
 
 盘中实时分钟级资金流（主力/大单/中单/小单/超大单净流入）。
 
-> **V3.1 替换说明：** 百度 PAE `fundflow` 和 `fundsortlist` 接口已于 2026-05 下线（返回 null），改用东财 push2 资金流 API。日级资金流见 Layer 4.5 `stock_fund_flow_120d()`。
+> **V3.2 更新：** 东财 push2 全系列（push2.eastmoney.com / push2his.eastmoney.com）于 2026-05 起服务端封锁（所有网络环境均 `RemoteDisconnected`），分钟级资金流端点暂时下线。日级资金流见 Layer 4.5（也已下线，见说明）。
 
 ```python
 import requests
@@ -795,52 +807,13 @@ def eastmoney_fund_flow_minute(code: str) -> list[dict]:
     code: 6位股票代码
     返回: [{time, main_net, small_net, mid_net, large_net, super_net}, ...]
     单位: 元
+    
+    V3.2: push2 已全线封锁，此函数返回空列表。
+    替代方案：使用同花顺网页版 https://data.10jqka.com.cn/funds/ggzjl/ 查看资金流。
     """
-    secid = f"1.{code}" if code.startswith("6") else f"0.{code}"
-    url = "https://push2.eastmoney.com/api/qt/stock/fflow/kline/get"
-    params = {
-        "secid": secid, "klt": 1,
-        "fields1": "f1,f2,f3,f7",
-        "fields2": "f51,f52,f53,f54,f55,f56,f57",
-    }
-    headers = {
-        "User-Agent": UA,
-        "Referer": "https://quote.eastmoney.com/",
-        "Origin": "https://quote.eastmoney.com",
-    }
-    try:
-        r = requests.get(url, params=params, headers=headers, timeout=10)
-        d = r.json()
-    except Exception as e:
-        print(f"[WARN] push2 资金流请求失败: {e}")
-        return []
-
-    rows = []
-    for line in d.get("data", {}).get("klines", []):
-        parts = line.split(",")
-        if len(parts) >= 6:
-            rows.append({
-                "time": parts[0],
-                "main_net": float(parts[1]),
-                "small_net": float(parts[2]),
-                "mid_net": float(parts[3]),
-                "large_net": float(parts[4]),
-                "super_net": float(parts[5]),
-            })
-    return rows
-
-# 用法: 分钟级实时资金流
-realtime = eastmoney_fund_flow_minute("000858")
-if realtime:
-    last = realtime[-1]
-    signal = "bullish" if last["main_net"] > 0 else "bearish"
-    print(f"主力净流入: {last['main_net']:.0f}元 → {signal}")
-    # 统计全天主力净流入
-    total = sum(r["main_net"] for r in realtime)
-    print(f"全天主力累计: {total/1e4:.0f}万元")
+    print("[WARN] 东财 push2 资金流 API 已于 2026-05 下线，返回空数据")
+    return []
 ```
-
-> **注意：** push2 资金流金额单位是**元**（非万元），使用时注意换算。`klt=1` 分钟级，`klt=101` 日级。
 
 ### 3.5 龙虎榜席位 — 个股上榜记录 + 买卖席位 TOP5 + 机构动向
 
@@ -1007,43 +980,46 @@ else:
 
 ```python
 import requests
+import pandas as pd
+from io import StringIO
 
 def industry_comparison(top_n: int = 20) -> dict:
     """
-    全行业涨跌幅排名（东财行业板块，~100 个行业）。
+    全行业涨跌幅排名（同花顺行业板块，~50 个行业）。
+    V3.2: 东财 push2 行业板块已下线，改用同花顺 HTML 解析。
     返回: {top: [...], bottom: [...], total: int}
     """
-    url = "https://push2.eastmoney.com/api/qt/clist/get"
-    params = {
-        "pn": "1", "pz": "100", "po": "1", "np": "1",
-        "fltt": "2", "invt": "2",
-        "fs": "m:90+t:2",
-        "fields": "f2,f3,f4,f12,f13,f14,f104,f105,f128,f136,f140,f141,f207",
-    }
+    url = "http://q.10jqka.com.cn/thshy/"
     headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
-    d = r.json()
-    items = d.get("data", {}).get("diff", [])
-    if not items:
+    try:
+        r = requests.get(url, headers=headers, timeout=15)
+        r.encoding = "gbk"
+        dfs = pd.read_html(StringIO(r.text))
+    except Exception as e:
+        print(f"[WARN] 同花顺行业板块请求失败: {e}")
         return {"top": [], "bottom": [], "total": 0}
 
+    if not dfs:
+        return {"top": [], "bottom": [], "total": 0}
+
+    df = dfs[0]
     rows = []
-    for i, item in enumerate(items):
+    for i, row in df.iterrows():
         rows.append({
-            "rank": i + 1,
-            "name": item.get("f14", ""),
-            "change_pct": item.get("f3", 0),
-            "code": item.get("f12", ""),
-            "up_count": item.get("f104", 0),
-            "down_count": item.get("f105", 0),
-            "leader": item.get("f140", ""),
-            "leader_change": item.get("f136", 0),
+            "rank": int(row.iloc[0]),
+            "name": row.iloc[1],
+            "change_pct": row.iloc[2],
+            "up_count": row.iloc[6],
+            "down_count": row.iloc[7],
+            "leader": row.iloc[9],
         })
 
+    # 按涨跌幅排序（同花顺默认已排序）
+    total = len(rows)
     return {
         "top": rows[:top_n],
         "bottom": rows[-top_n:],
-        "total": len(rows),
+        "total": total,
     }
 
 # 用法
@@ -1286,115 +1262,68 @@ for d in data[:5]:
 
 ### 4.5 个股资金流（120日，日级）
 
+> **V3.2 更新：** push2his.eastmoney.com 于 2026-05 起服务端封锁，日级资金流端点下线。
+> 替代方案：同花顺网页版 https://data.10jqka.com.cn/funds/ggzjl/
+
 ```python
 import requests
 
 def stock_fund_flow_120d(code: str) -> list[dict]:
     """
     个股资金流（日级，最近120个交易日）。
-    返回: [{date, main_net(主力净流入), small_net, mid_net, large_net, super_net}]
-    单位: 元
+    V3.2: push2his 已全线封锁，此函数返回空列表。
+    替代方案：使用同花顺网页版 https://data.10jqka.com.cn/funds/ggzjl/ 查看资金流。
     """
-    market_code = 1 if code.startswith("6") else 0
-    url = "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get"
-    params = {
-        "secid": f"{market_code}.{code}",
-        "fields1": "f1,f2,f3,f7",
-        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
-        "lmt": "120",
-    }
-    headers = {
-        "User-Agent": UA,
-        "Referer": "https://quote.eastmoney.com/",
-        "Origin": "https://quote.eastmoney.com",
-    }
-    try:
-        r = requests.get(url, params=params, headers=headers, timeout=15)
-        d = r.json()
-    except Exception as e:
-        print(f"[WARN] push2 资金流请求失败: {e}")
-        return []
-    klines = d.get("data", {}).get("klines", [])
-
-    rows = []
-    for line in klines:
-        parts = line.split(",")
-        if len(parts) >= 7:
-            rows.append({
-                "date": parts[0],
-                "main_net": float(parts[1]) if parts[1] != "-" else 0,
-                "small_net": float(parts[2]) if parts[2] != "-" else 0,
-                "mid_net": float(parts[3]) if parts[3] != "-" else 0,
-                "large_net": float(parts[4]) if parts[4] != "-" else 0,
-                "super_net": float(parts[5]) if parts[5] != "-" else 0,
-            })
-    return rows
-
-# 用法
-data = stock_fund_flow_120d("600519")
-for d in data[-5:]:
-    print(f"{d['date']}: 主力净流入={d['main_net']/1e4:.0f}万 超大单={d['super_net']/1e4:.0f}万")
-
-# 统计近20日主力净流入
-recent_20 = data[-20:]
-total_main = sum(d["main_net"] for d in recent_20)
-print(f"\n近20日主力累计净流入: {total_main/1e8:.2f}亿")
+    print("[WARN] 东财 push2his 资金流 API 已于 2026-05 下线，返回空数据")
+    return []
 ```
 
 ---
 
 ## Layer 5: 新闻层
 
-### 5.1 东财个股新闻（直连 search-api-web）
+### 5.1 东财个股新闻（np-listapi 替代方案）
+
+> **V3.2 更新：** search-api-web 个股搜索接口已下线（仅返回用户 passportWeb 数据），改用东财 np-listapi 财经快讯作为替代。该接口返回全市场相关新闻（含个股关联标签），不限于单只股票。
 
 ```python
 import requests
-import re
-import json
 
 def eastmoney_stock_news(code: str, page_size: int = 20) -> list[dict]:
     """
-    东财个股新闻（JSONP 接口）。
-    返回: [{title, content, time, source, url}]
+    东财经讯（np-listapi 替代方案）。
+    V3.2: 原 search-api-web 个股搜索已下线，改用 np-listapi 财经快讯。
+    返回: [{title, summary, time}]
+    > 注意：返回的是全市场新闻流，非个股专属。个股专属新闻建议用巨潮公告(7.1)或 F10。
     """
-    # 构造 JSONP 参数
-    cb = "jQuery_news"
-    url = "https://search-api-web.eastmoney.com/search/jsonp"
-    inner_params = json.dumps({
-        "uid": "",
-        "keyword": code,
-        "type": ["cmsArticleWebOld"],
-        "client": "web",
-        "clientType": "web",
-        "clientVersion": "curr",
-        "param": {"cmsArticleWebOld": {"searchScope": "default", "sort": "default",
-                  "pageIndex": 1, "pageSize": page_size, "preTag": "", "postTag": ""}},
-    }, separators=(',', ':'))
-    params = {"cb": cb, "param": inner_params}
-    headers = {"User-Agent": UA, "Referer": "https://so.eastmoney.com/"}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
-
-    # 解析 JSONP
-    text = r.text
-    json_str = text[text.index("(") + 1 : text.rindex(")")]
-    d = json.loads(json_str)
+    url = "https://np-listapi.eastmoney.com/comm/web/getFastNewsList"
+    params = {
+        "client": "web", "biz": "web_stock",
+        "fastColumn": "102", "pageSize": str(page_size),
+        "sortEnd": "", "req_trace": "test",
+    }
+    headers = {"User-Agent": UA, "Referer": "https://quote.eastmoney.com/"}
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=15)
+        d = r.json()
+        fast = d.get("data", {}).get("fastNewsList", [])
+    except Exception as e:
+        print(f"[WARN] 东财经讯请求失败: {e}")
+        fast = []
 
     rows = []
-    articles = d.get("result", {}).get("cmsArticleWebOld", {}).get("list", [])
-    for a in articles:
+    for item in fast:
         rows.append({
-            "title": re.sub(r'<[^>]+>', '', a.get("title", "")),
-            "content": re.sub(r'<[^>]+>', '', a.get("content", ""))[:200],
-            "time": a.get("date", ""),
-            "source": a.get("mediaName", ""),
-            "url": a.get("url", ""),
+            "title": item.get("title", ""),
+            "summary": item.get("summary", "")[:200],
+            "time": item.get("showTime", ""),
         })
     return rows
 
 # 用法
 news = eastmoney_stock_news("688017")
 for n in news[:5]:
-    print(f"  {n['time']} | {n['source']} | {n['title']}")
+    print(f"  {n['time']} | {n['title'][:60]}")
 ```
 
 ### 5.2 财联社快讯（直连 cls.cn）
@@ -1405,16 +1334,36 @@ import requests
 def cls_telegraph(page_size: int = 50) -> list[dict]:
     """
     财联社电报（全市场实时快讯）。
+    V3.2 更新：旧 /nodeapi/telegraphList 已下线(404)，改用 /v1/roll/get_roll_list + sign 签名。
     返回: [{title, content, time}]
     """
-    url = "https://www.cls.cn/nodeapi/telegraphList"
-    params = {"rn": str(page_size), "page": "1"}
+    import hashlib
+    
+    def _cls_sign(params: dict) -> str:
+        """财联社 sign = MD5(SHA1_hex(sorted_params_string))"""
+        sorted_keys = sorted(params.keys())
+        param_string = "&".join([f"{k}={params[k]}" for k in sorted_keys])
+        sha1_hex = hashlib.sha1(param_string.encode()).hexdigest()
+        return hashlib.md5(sha1_hex.encode()).hexdigest()
+    
+    params = {"app": "CailianpressWeb", "os": "web", "sv": "8.7.9", "rn": str(page_size)}
+    sign = _cls_sign(params)
+    url = "https://www.cls.cn/v1/roll/get_roll_list"
     headers = {"User-Agent": UA, "Referer": "https://www.cls.cn/"}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
-    d = r.json()
-
+    try:
+        r = requests.get(url, params={**params, "sign": sign}, headers=headers, timeout=10)
+        d = r.json()
+        if str(d.get("errno")) not in ("0", "200") and not d.get("data"):
+            # 可能需要登录态，返回空并提示
+            print(f"[WARN] 财联社快讯: errno={d.get('errno')}, 可能需要登录态")
+            return []
+        items = d.get("data", {}).get("roll_data", [])
+    except Exception as e:
+        print(f"[WARN] 财联社快讯请求失败: {e}")
+        items = []
+    
     rows = []
-    for item in d.get("data", {}).get("roll_data", []):
+    for item in items:
         rows.append({
             "title": item.get("title", "") or item.get("brief", ""),
             "content": item.get("content", "") or item.get("brief", ""),
@@ -1509,41 +1458,49 @@ for cat in categories:
 
 > **优化提示：** "股东研究" 中的【4.股东变化】章节含大量历史十大股东列表，实测 16000+ chars。建议只保留最新一期（-70% token）。
 
-### 6.3 东财个股基本面（直连 push2 API）
+### 6.3 个股基本信息（腾讯财经替代方案）
+
+> **V3.2 更新：** 东财 push2 API 已全线封锁，个股基本信息改用腾讯财经 API 替代。腾讯财经已覆盖 PE/PB/市值/换手率/涨跌停价等核心字段。个股详细信息（上市日期/总股本等）建议用 mootdx F10 或腾讯行情页。
 
 ```python
 import requests
 
 def eastmoney_stock_info(code: str) -> dict:
     """
-    东财个股基本面信息。
-    返回: {code, name, industry, total_shares, float_shares, mcap, float_mcap, list_date}
+    个股基本信息（腾讯财经替代方案）。
+    V3.2: 原 push2 API 已下线，改用腾讯财经。
+    返回: {code, name, price, pe_ttm, pb, mcap_yi, float_mcap_yi, limit_up, limit_down}
     """
-    market_code = 1 if code.startswith("6") else 0
-    url = "https://push2.eastmoney.com/api/qt/stock/get"
-    params = {
-        "fltt": "2", "invt": "2",
-        "fields": "f57,f58,f84,f85,f127,f116,f117,f189,f43",
-        "secid": f"{market_code}.{code}",
-    }
-    headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
-    d = r.json().get("data", {})
+    prefix = "sh" if code.startswith(("6", "9")) else ("bj" if code.startswith("8") else "sz")
+    url = f"https://qt.gtimg.cn/q={prefix}{code}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        r.encoding = "gbk"
+        vals = r.text.split('"')[1].split("~")
+        if len(vals) < 53:
+            print(f"[WARN] 腾讯财经返回字段不足")
+            return {}
+    except Exception as e:
+        print(f"[WARN] 腾讯财经请求失败: {e}")
+        return {}
+
     return {
-        "code": d.get("f57", ""),
-        "name": d.get("f58", ""),
-        "industry": d.get("f127", ""),
-        "total_shares": d.get("f84", 0),     # 总股本(股)
-        "float_shares": d.get("f85", 0),     # 流通股(股)
-        "mcap": d.get("f116", 0),            # 总市值(元)
-        "float_mcap": d.get("f117", 0),      # 流通市值(元)
-        "list_date": str(d.get("f189", "")), # 上市日期 YYYYMMDD
-        "price": d.get("f43", 0),
+        "code": code,
+        "name": vals[1],
+        "price": float(vals[3]) if vals[3] else 0,
+        "pe_ttm": float(vals[39]) if vals[39] else 0,
+        "pb": float(vals[46]) if vals[46] else 0,
+        "mcap_yi": float(vals[44]) if vals[44] else 0,     # 总市值(亿)
+        "float_mcap_yi": float(vals[45]) if vals[45] else 0, # 流通市值(亿)
+        "limit_up": float(vals[47]) if vals[47] else 0,
+        "limit_down": float(vals[48]) if vals[48] else 0,
+        "turnover_pct": float(vals[38]) if vals[38] else 0,
     }
 
 # 用法
 info = eastmoney_stock_info("688017")
-print(f"{info['name']}({info['code']}): 行业={info['industry']} 总市值={info['mcap']/1e8:.0f}亿 上市={info['list_date']}")
+print(f"{info['name']}({info['code']}): 价格={info['price']} PE={info['pe_ttm']} 市值={info['mcap_yi']}亿")
 ```
 
 ### 6.4 新浪财报三表（资产负债表/利润表/现金流量表）
@@ -1574,8 +1531,11 @@ def sina_financial_report(code: str, report_type: str = "lrb") -> list[dict]:
 
     rows = []
     result = d.get("result", {}).get("data", {})
-    # 结构: {report_type: [{...}, ...]}
-    items = result.get(report_type, [])
+    # V3.2: 新浪财报接口返回结构已变，数据在 report_list 中而非直接 {report_type} 键
+    if "report_list" in result:
+        items = result.get("report_list", [])
+    else:
+        items = result.get(report_type, [])
     if isinstance(items, list):
         rows = items
     return rows
