@@ -1704,19 +1704,43 @@ def _cninfo_ts_to_date(ts):
         return datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d")
     return str(ts)[:10] if ts else ""
 
+_cninfo_orgid_cache = None
+
+def _get_cninfo_orgid(code: str) -> str:
+    """从巨潮 stock list 动态查询真实 orgId（带缓存），失败时回退硬编码。"""
+    global _cninfo_orgid_cache
+    if _cninfo_orgid_cache is None:
+        _cninfo_orgid_cache = {}
+        try:
+            r = requests.get(
+                "http://www.cninfo.com.cn/new/data/szse_stock.json",
+                headers={"User-Agent": UA},
+                timeout=10,
+            )
+            data = r.json()
+            _cninfo_orgid_cache = {
+                s["code"]: s["orgId"] for s in data.get("stockList", [])
+            }
+        except Exception:
+            pass
+
+    if code in _cninfo_orgid_cache:
+        return _cninfo_orgid_cache[code]
+    # fallback: 硬编码（覆盖未收录或网络不可达的情况）
+    if code.startswith("6"):
+        return f"gssh0{code}"
+    elif code.startswith("8") or code.startswith("4"):
+        return f"gsbj0{code}"
+    else:
+        return f"gssz0{code}"
+
 def cninfo_announcements(code: str, page_size: int = 30) -> list[dict]:
     """
     巨潮公告全文检索。
     返回: [{title, type, date, url}]
     """
     url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
-    # 构造 orgId（巨潮 2026 新格式）
-    if code.startswith("6"):
-        org_id = f"gssh0{code}"
-    elif code.startswith("8") or code.startswith("4"):
-        org_id = f"gsbj0{code}"
-    else:
-        org_id = f"gssz0{code}"
+    org_id = _get_cninfo_orgid(code)
 
     payload = {
         "stock": f"{code},{org_id}",
