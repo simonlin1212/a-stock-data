@@ -1710,7 +1710,6 @@ def _get_cninfo_orgid(code: str) -> str:
     """从巨潮 stock list 动态查询真实 orgId（带缓存），失败时回退硬编码。"""
     global _cninfo_orgid_cache
     if _cninfo_orgid_cache is None:
-        _cninfo_orgid_cache = {}
         try:
             r = requests.get(
                 "http://www.cninfo.com.cn/new/data/szse_stock.json",
@@ -1722,7 +1721,8 @@ def _get_cninfo_orgid(code: str) -> str:
                 s["code"]: s["orgId"] for s in data.get("stockList", [])
             }
         except Exception:
-            pass
+            import warnings
+            warnings.warn("cninfo orgId 映射加载失败，将回退硬编码格式")
 
     if code in _cninfo_orgid_cache:
         return _cninfo_orgid_cache[code]
