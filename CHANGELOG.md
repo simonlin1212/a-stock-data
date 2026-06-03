@@ -1,5 +1,33 @@
 # Changelog
 
+## v4.0.0 — 渐进式披露重构
+
+### 架构调整
+- 将原本约 2000 行的单文件 `SKILL.md` 改造为渐进式披露 Skill 包：
+  - `SKILL.md` 只保留中文路由、数据源优先级、脚本入口和输出契约。
+  - `scripts/a_stock_client.py` 承载全部端点实现，并保留 V3.2.1 的公开函数名。
+  - `references/` 按端点层、估值公式、工作流和 FAQ 分层存储说明。
+  - 新增 `agents/openai.yaml` 作为 Codex UI 元数据。
+- 新增 `scripts/validate_env.py` 环境检查脚本。
+- 新增 `scripts/smoke_test_endpoints.py` 迁移完整性 smoke test。
+- `scripts/smoke_test_endpoints.py` 扩展为全量网络 best-effort 验证，覆盖行情、研报、信号、资金筹码、新闻、基本面、公告、mootdx 和 iwencai。
+
+### 依赖
+- 新增显式依赖 `lxml`，用于 `ths_eps_forecast()` 通过 `pandas.read_html()` 解析同花顺一致预期表格。
+
+### 修复
+- 修复 `dragon_tiger_board()` 在无上榜记录时 `buy_data` / `sell_data` 未初始化导致的异常。
+- `baidu_concept_blocks()` 遇到百度 PAE 业务错误时改为返回空结构并附带 `error` 字段，不再直接抛异常中断工作流。
+- `em_get()` 增加 3 次串行重试，默认直连东财，失败后再尝试一次环境代理 fallback，提高 push2 / push2his 在不同网络环境下的稳定性。
+- `eastmoney_stock_info()` 增加腾讯行情 fallback；当东财 push2 基本面接口不可达时，仍返回名称、价格、市值等基础字段，并附带 `fallback` 和 `error`。
+- `eastmoney_fund_flow_minute()` 和 `stock_fund_flow_120d()` 增加 HTTP 备用地址，降低 HTTPS push2 / push2his 瞬态断连影响。
+
+### 兼容性
+- 所有 V3.2.1 有效端点保留，端点数仍为 27。
+- 财联社旧 API 仍标记为下线，`cls_telegraph()` 仅作为兼容 stub 保留，默认返回空列表。
+- 继续保留东财 `em_get()` 串行限流、防封和会话复用策略。
+- 安装方式从“只复制 `SKILL.md`”变为“安装完整 `a-stock-data/` Skill 目录”。
+
 ## v3.2.1 — 2026-05-30
 
 ### 修复（预先存在的解析 Bug，非 v3.2 引入）
