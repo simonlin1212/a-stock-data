@@ -1,10 +1,11 @@
-"""a-stock-data 环境检查脚本。"""
+"""a-stock-data-next 环境检查脚本。"""
 
 from __future__ import annotations
 
 import importlib.util
 import os
 import sys
+from pathlib import Path
 
 
 def _check_module(name: str) -> tuple[str, str]:
@@ -22,7 +23,7 @@ def main() -> int:
     if os.environ.get("IWENCAI_API_KEY"):
         print("OK IWENCAI_API_KEY 已配置")
     else:
-        print("WARN IWENCAI_API_KEY 未配置：iwencai 语义研报搜索不可用")
+        print("WARN IWENCAI_API_KEY 未配置：仅 iwencai 功能需要；可从 https://www.iwencai.com/skillhub 获取后设置环境变量")
 
     return 0
 

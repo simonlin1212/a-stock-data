@@ -1,6 +1,6 @@
 """A 股全栈数据客户端。
 
-本模块由 a-stock-data Skill 使用，保留 V3.2.1 的公开函数名，
+本模块由 a-stock-data-next Skill 使用，保留 V3.2.2 的公开函数名，
 将原 SKILL.md 中的端点实现迁移为可执行脚本，避免在触发 Skill 时加载全部代码。
 """
 
@@ -23,6 +23,10 @@ from pathlib import Path
 from typing import Any
 
 import requests
+
+urllib.request.install_opener(
+    urllib.request.build_opener(urllib.request.ProxyHandler({}))
+)
 
 try:
     import pandas as pd
@@ -60,12 +64,20 @@ EM_SESSION.trust_env = False
 
 EM_SESSION.headers.update({"User-Agent": UA})
 
+HTTP_SESSION = requests.Session()
+HTTP_SESSION.trust_env = False
+HTTP_SESSION.headers.update({"User-Agent": UA})
+
+CNINFO_SESSION = requests.Session()
+CNINFO_SESSION.trust_env = False
+CNINFO_SESSION.headers.update({"User-Agent": UA})
+
 EM_MIN_INTERVAL = 1.0          # 两次东财请求最小间隔(秒)；批量筛选建议调大到 1.5~2
 
 _em_last_call = [0.0]          # 模块级上次请求时间戳
 
 def em_get(url: str, params: dict | None = None, headers: dict | None = None,
-           timeout: int = 15, **kwargs):
+           timeout: int = 15, allow_proxy_fallback: bool = True, **kwargs):
     """东财统一请求入口：自动节流 + 复用 session + 默认 UA。
     所有 eastmoney.com 接口都应通过它请求，避免高频被封 IP。"""
     last_error = None
@@ -82,6 +94,8 @@ def em_get(url: str, params: dict | None = None, headers: dict | None = None,
             _em_last_call[0] = time.time()
             if attempt < 2:
                 time.sleep(0.8 + attempt * 0.8)
+    if not allow_proxy_fallback:
+        raise last_error
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=timeout, **kwargs)
         _em_last_call[0] = time.time()
@@ -183,7 +197,7 @@ def baidu_kline_with_ma(code: str, start_time: str = "") -> dict:
         "Origin": "https://gushitong.baidu.com",
         "Referer": "https://gushitong.baidu.com/",
     }
-    r = requests.get(url, params=params, headers=headers, timeout=10)
+    r = HTTP_SESSION.get(url, params=params, headers=headers, timeout=10)
     d = r.json()
     result = d.get("Result", {})
     md = result.get("newMarketData", {})
@@ -256,7 +270,7 @@ def ths_eps_forecast(code: str) -> pd.DataFrame:
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Referer": "https://basic.10jqka.com.cn/",
     }
-    r = requests.get(url, headers=headers, timeout=15)
+    r = HTTP_SESSION.get(url, headers=headers, timeout=15)
     r.encoding = "gbk"
     dfs = pd.read_html(StringIO(r.text))
     # 找含"每股收益"的表格
@@ -271,7 +285,18 @@ def ths_eps_forecast(code: str) -> pd.DataFrame:
 # ---- migrated block 8 ----
 IWENCAI_BASE = os.environ.get("IWENCAI_BASE_URL", "https://openapi.iwencai.com")
 
-IWENCAI_KEY = os.environ.get("IWENCAI_API_KEY", "")
+
+def get_iwencai_api_key(required: bool = False) -> str:
+    """读取 iwencai key：仅从环境变量读取。"""
+    key = os.environ.get("IWENCAI_API_KEY", "").strip()
+    if key:
+        return key
+    if required:
+        raise RuntimeError(
+            "iwencai 需要 IWENCAI_API_KEY。请先从 https://www.iwencai.com/skillhub "
+            "获取 key，并设置环境变量 IWENCAI_API_KEY 后重试。"
+        )
+    return ""
 
 def _claw_headers(call_type: str = "normal") -> dict:
     """SkillHub 2.0 必须的 X-Claw 鉴权头"""
@@ -290,8 +315,9 @@ def iwencai_search(query: str, channel: str = "report", size: int = 50) -> list[
     channel: "report"(研报) / "announcement"(公告) / "news"(新闻)
     size: 默认10, 实测可调到50（隐藏参数）
     """
+    key = get_iwencai_api_key(required=True)
     headers = {
-        "Authorization": f"Bearer {IWENCAI_KEY}",
+        "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
         **_claw_headers(),
     }
@@ -301,7 +327,7 @@ def iwencai_search(query: str, channel: str = "report", size: int = 50) -> list[
         "query": query,
         "size": size,
     }
-    r = requests.post(
+    r = HTTP_SESSION.post(
         f"{IWENCAI_BASE}/v1/comprehensive/search",
         json=payload, headers=headers, timeout=30,
     )
@@ -317,8 +343,9 @@ def iwencai_query(query: str, page: int = 1, limit: int = 50) -> list[dict]:
     iwencai NL数据查询（结构化字段）。
     例: "贵州茅台 ROE" → DataFrame-like rows
     """
+    key = get_iwencai_api_key(required=True)
     headers = {
-        "Authorization": f"Bearer {IWENCAI_KEY}",
+        "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
         **_claw_headers(),
     }
@@ -329,7 +356,7 @@ def iwencai_query(query: str, page: int = 1, limit: int = 50) -> list[dict]:
         "is_cache": "1",
         "expand_index": "true",
     }
-    r = requests.post(
+    r = HTTP_SESSION.post(
         f"{IWENCAI_BASE}/v1/query2data",
         json=payload, headers=headers, timeout=30,
     )
@@ -374,7 +401,7 @@ def ths_hot_reason(date: str = None) -> pd.DataFrame:
             "Chrome/117.0.0.0 Safari/537.36"
         )
     }
-    r = requests.get(url, headers=headers, timeout=10)
+    r = HTTP_SESSION.get(url, headers=headers, timeout=10)
     data = r.json()
     if data.get("errocode", 0) != 0:
         raise RuntimeError(f"同花顺热点错误: {data.get('errormsg', '')}")
@@ -413,7 +440,7 @@ def hsgt_realtime() -> pd.DataFrame:
     单位: 亿元
     """
     url = "https://data.hexin.cn/market/hsgtApi/method/dayChart/"
-    r = requests.get(url, headers=HSGT_HEADERS, timeout=10)
+    r = HTTP_SESSION.get(url, headers=HSGT_HEADERS, timeout=10)
     d = r.json()
     times = d.get("time", [])
     hgt = d.get("hgt", [])
@@ -457,47 +484,56 @@ def _load_northbound_history(n: int = 20) -> pd.DataFrame:
 
 
 # ---- migrated block 11 ----
-_BAIDU_PAE_HEADERS = {
-    "Host": "finance.pae.baidu.com",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/117.0.0.0",
-    "Accept": "application/vnd.finance-web.v1+json",
-    "Origin": "https://gushitong.baidu.com",
-    "Referer": "https://gushitong.baidu.com/",
-}
+def eastmoney_concept_blocks(code: str) -> dict:
+    """
+    个股所属板块/概念归属（东财 slist，一次请求拿全，已内置限流）。
+    返回: {total, boards: [{name, code, change_pct, lead_stock}], concept_tags: [...]}
+    """
+    market_code = 1 if code.startswith("6") else 0
+    params = {
+        "fltt": "2",
+        "invt": "2",
+        "secid": f"{market_code}.{code}",
+        "spt": "3",
+        "pi": "0",
+        "pz": "200",
+        "po": "1",
+        "fields": "f12,f14,f3,f128",
+    }
+    headers = {"User-Agent": UA, "Referer": "https://quote.eastmoney.com/"}
+    try:
+        r = em_get(
+            "https://push2.eastmoney.com/api/qt/slist/get",
+            params=params,
+            headers=headers,
+            timeout=15,
+        )
+        d = r.json()
+    except Exception as exc:
+        return {"total": 0, "boards": [], "concept_tags": [], "error": str(exc)}
+
+    diff = (d.get("data") or {}).get("diff") or {}
+    items = diff.values() if isinstance(diff, dict) else diff
+    boards = []
+    for item in items or []:
+        boards.append(
+            {
+                "name": item.get("f14", ""),
+                "code": item.get("f12", ""),
+                "change_pct": item.get("f3", ""),
+                "lead_stock": item.get("f128", ""),
+            }
+        )
+    return {
+        "total": len(boards),
+        "boards": boards,
+        "concept_tags": [board["name"] for board in boards],
+    }
+
 
 def baidu_concept_blocks(code: str) -> dict:
-    """
-    百度股市通概念板块归属。
-    返回: {industry: [...], concept: [...], region: [...], concept_tags: [...]}
-    """
-    url = (
-        f"https://finance.pae.baidu.com/api/getrelatedblock"
-        f"?code={code}&market=ab"
-        f"&typeCode=all&finClientType=pc"
-    )
-    r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
-    d = r.json()
-    result = {"industry": [], "concept": [], "region": [], "concept_tags": []}
-    if str(d.get("ResultCode", -1)) != "0":
-        result["error"] = d
-        return result
-
-    for block in d.get("Result", []):
-        block_type = block.get("type", "")
-        for item in block.get("list", []):
-            entry = {
-                "name": item.get("name", ""),
-                "change_pct": item.get("increase", ""),
-                "desc": item.get("desc", ""),
-            }
-            if "行业" in block_type:
-                result["industry"].append(entry)
-            elif "概念" in block_type:
-                result["concept"].append(entry)
-                result["concept_tags"].append(entry["name"])
-            elif "地域" in block_type:
-                result["region"].append(entry)
-    return result
+    """兼容旧入口：百度 PAE 概念接口已失效，改走东财 slist。"""
+    return eastmoney_concept_blocks(code)
 
 
 # ---- migrated block 12 ----
@@ -676,7 +712,12 @@ def industry_comparison(top_n: int = 20) -> dict:
     全行业涨跌幅排名（东财行业板块，~100 个行业）。
     返回: {top: [...], bottom: [...], total: int}
     """
-    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    urls = [
+        "https://82.push2.eastmoney.com/api/qt/clist/get",
+        "https://push2.eastmoney.com/api/qt/clist/get",
+        "http://82.push2.eastmoney.com/api/qt/clist/get",
+        "http://push2.eastmoney.com/api/qt/clist/get",
+    ]
     params = {
         "pn": "1", "pz": "100", "po": "1", "np": "1",
         "fltt": "2", "invt": "2",
@@ -684,8 +725,18 @@ def industry_comparison(top_n: int = 20) -> dict:
         "fields": "f2,f3,f4,f12,f13,f14,f104,f105,f128,f136,f140,f141,f207",
     }
     headers = {"User-Agent": UA}
-    r = em_get(url, params=params, headers=headers, timeout=15)
-    d = r.json()
+    d = {}
+    last_error = None
+    for url in urls:
+        try:
+            r = em_get(url, params=params, headers=headers, timeout=15, allow_proxy_fallback=False)
+            d = r.json()
+            if (d.get("data") or {}).get("diff"):
+                break
+        except Exception as exc:
+            last_error = exc
+    if not d and last_error:
+        raise last_error
     items = d.get("data", {}).get("diff", [])
     if not items:
         return {"top": [], "bottom": [], "total": 0}
@@ -1052,7 +1103,7 @@ def sina_financial_report(code: str, report_type: str = "lrb", num: int = 8) -> 
         "num": str(num),
     }
     headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
+    r = HTTP_SESSION.get(url, params=params, headers=headers, timeout=15)
     # 新浪实际结构: result.data.report_list 是「按报告期(如 '20260331')为键」的 dict,
     # 每期对象的 data 字段才是行项列表 [{item_title, item_value, item_tongbi}]。
     report_list = r.json().get("result", {}).get("data", {}).get("report_list", {}) or {}
@@ -1080,19 +1131,43 @@ def _cninfo_ts_to_date(ts):
         return datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d")
     return str(ts)[:10] if ts else ""
 
+_CNINFO_ORGID_MAP = {}
+
+
+def _cninfo_orgid(code: str) -> str:
+    """优先动态读取巨潮真实 orgId，失败时回退旧格式。"""
+    global _CNINFO_ORGID_MAP
+    if not _CNINFO_ORGID_MAP:
+        try:
+            r = CNINFO_SESSION.get(
+                "http://www.cninfo.com.cn/new/data/szse_stock.json",
+                headers={"User-Agent": UA},
+                timeout=15,
+            )
+            _CNINFO_ORGID_MAP = {
+                item["code"]: item["orgId"]
+                for item in r.json().get("stockList", [])
+                if item.get("code") and item.get("orgId")
+            }
+        except Exception as exc:
+            print(f"[WARN] 巨潮 orgId 映射表拉取失败，回退硬编码规则: {exc}")
+    org_id = _CNINFO_ORGID_MAP.get(code)
+    if org_id:
+        return org_id
+    if code.startswith("6"):
+        return f"gssh0{code}"
+    if code.startswith(("8", "4")):
+        return f"gsbj0{code}"
+    return f"gssz0{code}"
+
+
 def cninfo_announcements(code: str, page_size: int = 30) -> list[dict]:
     """
     巨潮公告全文检索。
     返回: [{title, type, date, url}]
     """
     url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
-    # 构造 orgId（巨潮 2026 新格式）
-    if code.startswith("6"):
-        org_id = f"gssh0{code}"
-    elif code.startswith("8") or code.startswith("4"):
-        org_id = f"gsbj0{code}"
-    else:
-        org_id = f"gssz0{code}"
+    org_id = _cninfo_orgid(code)
 
     payload = {
         "stock": f"{code},{org_id}",
@@ -1115,7 +1190,7 @@ def cninfo_announcements(code: str, page_size: int = 30) -> list[dict]:
         "Referer": "https://www.cninfo.com.cn/new/disclosure",
         "Origin": "https://www.cninfo.com.cn",
     }
-    r = requests.post(url, data=payload, headers=headers, timeout=15)
+    r = CNINFO_SESSION.post(url, data=payload, headers=headers, timeout=15)
     d = r.json()
 
     rows = []
@@ -1289,7 +1364,7 @@ def _json_default(value: Any):
 
 
 def _main() -> None:
-    parser = argparse.ArgumentParser(description="a-stock-data endpoint runner")
+    parser = argparse.ArgumentParser(description="a-stock-data-next endpoint runner")
     parser.add_argument("function", help="函数名，如 tencent_quote 或 full_valuation")
     parser.add_argument("args", nargs="*", help="位置参数")
     parser.add_argument("--kwargs", default="{}", help="JSON 格式关键字参数")

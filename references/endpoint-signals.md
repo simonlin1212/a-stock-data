@@ -11,7 +11,7 @@
 | 北向缓存路径 | `_northbound_cache_path()` | 本地 | 历史缓存 CSV。 |
 | 保存北向快照 | `_save_northbound_snapshot(date, hgt, sgt)` | 本地 | 收盘后积累历史。 |
 | 读取北向历史 | `_load_northbound_history(n=20)` | 本地 | 只包含本地已缓存日期。 |
-| 概念板块 | `baidu_concept_blocks(code)` | 百度股市通 | 行业/概念/地域归属。 |
+| 板块归属 | `eastmoney_concept_blocks(code)` / `baidu_concept_blocks(code)` | 东财 slist | 行业/概念/地域混合板块归属；旧百度函数名保留兼容。 |
 | 分钟资金流 | `eastmoney_fund_flow_minute(code)` | 东财 push2 | 主力/超大单/大单/中单/小单分钟净流入。 |
 | 龙虎榜席位 | `dragon_tiger_board(code, trade_date, look_back=30)` | 东财 datacenter | 上榜记录、买卖席位、机构动向。 |
 | 限售解禁 | `lockup_expiry(code, trade_date, forward_days=90)` | 东财 datacenter | 历史解禁和未来解禁。 |

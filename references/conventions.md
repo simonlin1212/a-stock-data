@@ -3,7 +3,7 @@
 ## 依赖
 
 ```bash
-pip install mootdx requests pandas lxml stockstats
+pip install -r requirements.txt
 ```
 
 - `mootdx`：通达信 TCP 行情、财务快照、F10。
@@ -18,6 +18,10 @@ pip install mootdx requests pandas lxml stockstats
 export IWENCAI_API_KEY="your_key_here"
 export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 ```
+
+读取规则：仅从环境变量 `IWENCAI_API_KEY` 读取。若缺失，调用 iwencai 端点会报错并提示从 https://www.iwencai.com/skillhub 获取 key 后设置环境变量。
+
+不要把 key 写入 README、SKILL.md、references、`local-validation/` 或其他文件。
 
 其他数据源无需 key。
 

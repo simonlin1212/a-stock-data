@@ -15,7 +15,7 @@
 1. `ths_hot_reason()` 获取强势股和题材 reason。
 2. 对 reason 做词频或主题聚类。
 3. 用 `industry_comparison()` 检查行业涨跌同步性。
-4. 对重点标的用 `baidu_concept_blocks(code)` 验证概念归属。
+4. 对重点标的用 `eastmoney_concept_blocks(code)` 验证板块归属。
 5. 用 `eastmoney_fund_flow_minute(code)` 验证当日资金方向。
 
 ## 新标的快速调研
@@ -25,7 +25,7 @@
 1. `eastmoney_reports(code)`：是否有机构覆盖。
 2. `tencent_quote([code])`：实时估值。
 3. `ths_eps_forecast(code)`：一致预期。
-4. `baidu_concept_blocks(code)`：行业/概念。
+4. `eastmoney_concept_blocks(code)`：行业/概念/地域混合板块。
 5. `eastmoney_fund_flow_minute(code)`：当日资金。
 6. `stock_fund_flow_120d(code)`：资金持续性。
 7. `dragon_tiger_board(code, today)`：席位。

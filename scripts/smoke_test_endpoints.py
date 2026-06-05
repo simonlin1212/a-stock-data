@@ -1,4 +1,4 @@
-"""a-stock-data 端点迁移 smoke test。
+"""a-stock-data-next 端点迁移 smoke test。
 
 默认只做导入、函数存在性和无网络公式校验。传入 --network 后执行全端点 best-effort
 真实 API 探测：函数抛异常记为 WARN，返回空但无异常记为 OK，避免单个外部源波动阻断整体验证。
@@ -31,6 +31,7 @@ REQUIRED_FUNCTIONS = [
     "eastmoney_reports",
     "download_pdf",
     "ths_eps_forecast",
+    "get_iwencai_api_key",
     "_claw_headers",
     "iwencai_search",
     "iwencai_query",
@@ -40,6 +41,7 @@ REQUIRED_FUNCTIONS = [
     "_northbound_cache_path",
     "_save_northbound_snapshot",
     "_load_northbound_history",
+    "eastmoney_concept_blocks",
     "baidu_concept_blocks",
     "eastmoney_fund_flow_minute",
     "dragon_tiger_board",
@@ -57,6 +59,7 @@ REQUIRED_FUNCTIONS = [
     "eastmoney_stock_info",
     "sina_financial_report",
     "_cninfo_ts_to_date",
+    "_cninfo_orgid",
     "cninfo_announcements",
     "forward_pe",
     "pe_digestion",
@@ -103,7 +106,7 @@ def main() -> int:
             ("iwencai研报搜索", lambda: client.iwencai_search("贵州茅台 研报", size=5)),
             ("同花顺热点", lambda: client.ths_hot_reason()),
             ("北向实时", lambda: client.hsgt_realtime()),
-            ("百度概念", lambda: client.baidu_concept_blocks("600519")),
+            ("东财板块归属", lambda: client.eastmoney_concept_blocks("600519")),
             ("东财分钟资金流", lambda: client.eastmoney_fund_flow_minute("600519")),
             ("龙虎榜席位", lambda: client.dragon_tiger_board("600519", today)),
             ("限售解禁", lambda: client.lockup_expiry("600519", today)),

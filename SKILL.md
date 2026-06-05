@@ -1,5 +1,5 @@
 ---
-name: a-stock-data
+name: a-stock-data-next
 description: A 股全栈数据工具包。用于实时行情、K线、估值、研报、一致预期、题材热点、概念板块、北向资金、资金流、龙虎榜、限售解禁、融资融券、大宗交易、股东户数、分红、新闻、基本面、财报三表和巨潮公告等 A 股数据任务。
 origin: custom
 version: 4.0.0
@@ -77,6 +77,10 @@ valuation = full_valuation("688017")
 python scripts/validate_env.py
 ```
 
+iwencai key 配置：
+
+调用 iwencai 前，优先从环境变量读取 `IWENCAI_API_KEY`。若无法获取，向用户说明 iwencai 语义搜索需要 key，可通过 https://www.iwencai.com/skillhub 获取，并设置环境变量后重试。不要从本地验证目录读取 key，也不要把 key 写入受版本管理文件。
+
 迁移完整性 smoke test：
 
 ```bash
@@ -91,7 +95,7 @@ python scripts/smoke_test_endpoints.py
 
 - 行情层：mootdx 行情、腾讯财经、百度 K线。
 - 研报层：东财研报、东财 PDF、同花顺一致预期、iwencai 搜索。
-- 信号层：同花顺热点、北向实时、北向历史缓存、百度概念、东财分钟资金流、龙虎榜、全市场龙虎榜、限售解禁、行业排名。
+- 信号层：同花顺热点、北向实时、北向历史缓存、东财板块归属、东财分钟资金流、龙虎榜、全市场龙虎榜、限售解禁、行业排名。
 - 资金面/筹码层：融资融券、大宗交易、股东户数、分红送转、120 日资金流。
 - 新闻层：东财个股新闻、东财全球资讯。
 - 基础数据层：mootdx 财务快照、mootdx F10、东财个股基本面、新浪财报三表。

@@ -1,6 +1,8 @@
-# a-stock-data
+# a-stock-data-next
 
 A 股全栈数据工具包：7 层架构、27 个有效端点、零第三方数据封装依赖。
+
+本项目基于原项目 [simonlin1212/a-stock-data](https://github.com/simonlin1212/a-stock-data) 重构而来，保留原始端点能力，并将单文件 Skill 改造为渐进式披露的目录式 Skill 包。
 
 V4.0 起项目从“单文件内嵌全部代码”改造为“渐进式披露 Skill 包”：
 
@@ -17,17 +19,23 @@ V4.0 起项目从“单文件内嵌全部代码”改造为“渐进式披露 Sk
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/simonlin1212/a-stock-data ~/.claude/skills/a-stock-data
-cd ~/.claude/skills/a-stock-data
-pip install mootdx requests pandas lxml stockstats
+git clone <your-a-stock-data-next-repo-url> ~/.claude/skills/a-stock-data-next
+cd ~/.claude/skills/a-stock-data-next
+pip install -r requirements.txt
 ```
 
-Codex 用户也应把整个 `a-stock-data/` 目录放入可用 Skill 目录，而不是只复制 `SKILL.md`。
+Codex 用户也应把整个 `a-stock-data-next/` 目录放入可用 Skill 目录，而不是只复制 `SKILL.md`。
 
 环境检查：
 
 ```bash
 python scripts/validate_env.py
+```
+
+配置 iwencai key（仅语义搜索需要）：从 https://www.iwencai.com/skillhub 获取 key 后设置环境变量。
+
+```bash
+export IWENCAI_API_KEY="your_key_here"
 ```
 
 迁移完整性检查：
@@ -49,7 +57,7 @@ python scripts/a_stock_client.py full_valuation 688017
 A 股全栈数据
 ├── 行情层      mootdx + 腾讯财经 + 百度K线
 ├── 研报层      东财 reportapi + 东财 PDF + 同花顺 + iwencai
-├── 信号层      同花顺热点/北向 + 百度概念 + 东财资金流/龙虎榜/解禁/行业
+├── 信号层      同花顺热点/北向 + 东财板块归属 + 东财资金流/龙虎榜/解禁/行业
 ├── 资金筹码层  东财 datacenter + push2his
 ├── 新闻层      东财个股新闻 + 东财全球资讯
 ├── 基础数据层  mootdx + 东财 + 新浪
@@ -88,7 +96,7 @@ A 股全栈数据
 | 同花顺热点 | `ths_hot_reason` | 当日强势股、题材归因 |
 | 北向实时 | `hsgt_realtime` | 沪股通/深股通分钟流向 |
 | 北向历史 | `_load_northbound_history` | 本地自缓存历史 |
-| 百度概念 | `baidu_concept_blocks` | 行业、概念、地域归属 |
+| 东财板块归属 | `eastmoney_concept_blocks` / `baidu_concept_blocks` | 行业、概念、地域混合板块归属；旧百度入口保留兼容 |
 | 分钟资金流 | `eastmoney_fund_flow_minute` | 主力/超大单/大单/中单/小单分钟净流入 |
 | 龙虎榜席位 | `dragon_tiger_board` | 上榜记录、买卖席位、机构动向 |
 | 全市场龙虎榜 | `daily_dragon_tiger` | 每日全市场上榜股票和净买额 |
@@ -122,7 +130,7 @@ A 股全栈数据
 | F10 公司资料 | `mootdx_f10` / `mootdx_f10_section` | 9 大类公司文本 |
 | 东财个股信息 | `eastmoney_stock_info` | 行业、股本、市值、上市日期 |
 | 新浪财报三表 | `sina_financial_report` | 利润表、资产负债表、现金流量表 |
-| 巨潮公告 | `cninfo_announcements` | 沪深北公告全文检索 |
+| 巨潮公告 | `cninfo_announcements` | 沪深北公告全文检索，动态解析真实 orgId |
 
 ## 估值和工作流
 
@@ -142,7 +150,7 @@ A 股全栈数据
 ## 目录说明
 
 ```text
-a-stock-data/
+a-stock-data-next/
 ├── SKILL.md
 ├── agents/openai.yaml
 ├── scripts/
@@ -168,7 +176,7 @@ a-stock-data/
 
 ## 注意事项
 
-- 只有 iwencai 需要 `IWENCAI_API_KEY`。
+- 只有 iwencai 需要 `IWENCAI_API_KEY`；key 可从 https://www.iwencai.com/skillhub 获取，并通过环境变量提供。
 - 东财接口有风控，批量任务不要并发。
 - 财联社旧接口已下线，用东财全球资讯替代。
 - 回答当前行情、资金流、新闻、公告时必须实时取数，不要使用模型记忆。
@@ -178,6 +186,8 @@ a-stock-data/
 # English
 
 Full-stack data toolkit for China A-share market: 7-layer architecture, 27 active endpoints, and zero third-party data wrapper dependency.
+
+This project is refactored from the original [simonlin1212/a-stock-data](https://github.com/simonlin1212/a-stock-data). It keeps the original endpoint coverage while converting the monolithic Skill file into a progressive-disclosure Skill package.
 
 Since V4.0, this project uses a progressive-disclosure Skill package instead of a monolithic Markdown file:
 
@@ -194,17 +204,23 @@ Install the whole Skill directory:
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone https://github.com/simonlin1212/a-stock-data ~/.claude/skills/a-stock-data
-cd ~/.claude/skills/a-stock-data
-pip install mootdx requests pandas lxml stockstats
+git clone <your-a-stock-data-next-repo-url> ~/.claude/skills/a-stock-data-next
+cd ~/.claude/skills/a-stock-data-next
+pip install -r requirements.txt
 ```
 
-Codex users should also install the full `a-stock-data/` directory instead of copying only `SKILL.md`.
+Codex users should also install the full `a-stock-data-next/` directory instead of copying only `SKILL.md`.
 
 Environment check:
 
 ```bash
 python scripts/validate_env.py
+```
+
+Configure iwencai key for semantic search: get a key from https://www.iwencai.com/skillhub and set it as an environment variable.
+
+```bash
+export IWENCAI_API_KEY="your_key_here"
 ```
 
 Migration smoke test:
@@ -226,7 +242,7 @@ python scripts/a_stock_client.py full_valuation 688017
 A-share full-stack data
 ├── Market          mootdx + Tencent Finance + Baidu K-line
 ├── Research        Eastmoney reportapi + Eastmoney PDF + THS + iwencai
-├── Signals         THS hot/northbound + Baidu concepts + Eastmoney flow/DTB/lockup/industry
+├── Signals         THS hot/northbound + Eastmoney sector membership + Eastmoney flow/DTB/lockup/industry
 ├── Capital/Chips   Eastmoney datacenter + push2his
 ├── News            Eastmoney stock news + Eastmoney global news
 ├── Fundamentals    mootdx + Eastmoney + Sina
@@ -265,7 +281,7 @@ Source priority:
 | THS hot reasons | `ths_hot_reason` | Strong stocks and theme attribution |
 | Northbound realtime | `hsgt_realtime` | Shanghai/Shenzhen Connect minute-level flow |
 | Northbound cache | `_load_northbound_history` | Locally cached history |
-| Baidu concepts | `baidu_concept_blocks` | Industry, concept, and region tags |
+| Eastmoney sector membership | `eastmoney_concept_blocks` / `baidu_concept_blocks` | Mixed industry, concept, and region board membership; the old Baidu entry remains compatible |
 | Minute fund flow | `eastmoney_fund_flow_minute` | Main, super-large, large, mid, small order flow |
 | Dragon-Tiger Board | `dragon_tiger_board` | Records, buy/sell brokerages, institutional activity |
 | Daily Dragon-Tiger Board | `daily_dragon_tiger` | Full-market daily list and net buy ranking |
@@ -299,7 +315,7 @@ The old Cailianpress public API is offline. `cls_telegraph()` is kept only as a 
 | F10 company data | `mootdx_f10` / `mootdx_f10_section` | 9 categories of company text |
 | Eastmoney stock info | `eastmoney_stock_info` | Industry, shares, market cap, listing date |
 | Sina financial statements | `sina_financial_report` | Income statement, balance sheet, cash flow |
-| cninfo announcements | `cninfo_announcements` | Full announcements across Shanghai, Shenzhen, Beijing |
+| cninfo announcements | `cninfo_announcements` | Full announcements across Shanghai, Shenzhen, Beijing with dynamic orgId resolution |
 
 ## Valuation and Workflows
 
@@ -318,7 +334,7 @@ Workflow references:
 
 ## Notes
 
-- Only iwencai requires `IWENCAI_API_KEY`.
+- Only iwencai requires `IWENCAI_API_KEY`; get a key from https://www.iwencai.com/skillhub and provide it through the environment variable.
 - Eastmoney has rate limits. Do not run batch jobs concurrently.
 - The old Cailianpress API is offline; use Eastmoney global news instead.
 - Always retrieve current quotes, flow, news, announcements, and reports live. Do not answer current market data from model memory.

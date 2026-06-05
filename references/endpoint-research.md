@@ -9,7 +9,7 @@
 | 研报列表 | `eastmoney_reports(code, max_pages=5)` | 东财 reportapi | 返回研报列表、评级、EPS 预测字段。 |
 | PDF 下载 | `download_pdf(record, target_dir="./reports")` | 东财 PDF | 从研报 record 下载 PDF。 |
 | 一致预期 EPS | `ths_eps_forecast(code)` | 同花顺 | 直连 `basic.10jqka.com.cn`。 |
-| iwencai 搜索 | `iwencai_search(query, channel="report", size=50)` | iwencai OpenAPI | 需要 `IWENCAI_API_KEY`。 |
+| iwencai 搜索 | `iwencai_search(query, channel="report", size=50)` | iwencai OpenAPI | 需要环境变量 `IWENCAI_API_KEY`。 |
 | iwencai 查询 | `iwencai_query(query, page=1, limit=50)` | iwencai OpenAPI | 兼容查询入口。 |
 | 研报去重 | `dedup_articles(articles)` | 本地 | 按标题/链接去重。 |
 
@@ -34,5 +34,5 @@ PDF 下载需要东财 Referer，脚本已处理。
 ## iwencai Caveat
 
 - 只有 iwencai 需要 key。
-- 401 通常是 `IWENCAI_API_KEY` 缺失、过期或 X-Claw 配置不可用。
+- 401 通常是 `IWENCAI_API_KEY` 缺失、过期或 X-Claw 配置不可用。无 key 时可从 https://www.iwencai.com/skillhub 获取，并设置环境变量 `IWENCAI_API_KEY`。
 - 无 key 时可退回东财个股研报和主题关键词检索，但自然语言跨主题能力会下降。

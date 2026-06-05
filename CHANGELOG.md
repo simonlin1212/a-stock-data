@@ -1,5 +1,29 @@
 # Changelog
 
+## v4.1.0 — V3.2.2 同步修复、项目更名
+
+### 项目命名
+- 重构后项目名改为 `a-stock-data-next`。
+- README 明确说明本项目基于原项目 [simonlin1212/a-stock-data](https://github.com/simonlin1212/a-stock-data) 重构而来。
+
+### 依赖
+- 新增 `requirements.txt`，显式列出实际运行依赖：`requests`、`pandas`、`lxml`、`mootdx`、`stockstats`。
+
+### V3.2.2 同步修复
+- 同步原项目 V3.2.2 的有效修复：百度 PAE `getrelatedblock` 概念归属接口已失效，新增 `eastmoney_concept_blocks()` 改用东财 `slist`；`baidu_concept_blocks()` 保留为兼容 wrapper。
+- 同步原项目 V3.2.2 的有效修复：`cninfo_announcements()` 改为优先读取巨潮官方 `szse_stock.json` 映射表动态解析真实 `orgId`，失败时再回退硬编码规则。
+- 新增通用 `HTTP_SESSION` 和 `CNINFO_SESSION`，默认不继承系统代理，避免失效本地代理导致腾讯、百度、同花顺、iwencai、新浪和巨潮请求失败；`urllib` 默认 opener 也禁用环境代理。
+- `industry_comparison()` 增加 `82.push2.eastmoney.com` 与 HTTP 备用地址；当前网络下东财 `clist` 仍可能被远端断开，验证报告中标记为 WARN。
+
+### iwencai 配置
+- `scripts/a_stock_client.py` 调用 iwencai 时仅从环境变量读取 `IWENCAI_API_KEY`；如果缺失，会提示用户可从 https://www.iwencai.com/skillhub 获取 key 并设置环境变量。
+- `SKILL.md`、`README.md` 和 references 同步说明 iwencai key 的环境变量配置方式，删除从 `local-validation` 读取 key 的逻辑和说明。
+- `scripts/validate_env.py` 仅检查环境变量 `IWENCAI_API_KEY`。
+
+### 验证
+- `scripts/validate_env.py` 在 `a-stock-data-verify` 环境中通过，Python 3.12.13，`requests`、`pandas`、`lxml`、`mootdx`、`stockstats` 均 OK。
+- `scripts/smoke_test_endpoints.py --network` 最终结果为 `OK=28, WARN=1`；唯一 WARN 为东财 `clist` 行业排名接口在当前网络下被远端断开。
+
 ## v4.0.0 — 渐进式披露重构
 
 ### 架构调整
