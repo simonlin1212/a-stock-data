@@ -1,5 +1,80 @@
 # Changelog
 
+## v3.2.4 — 2026-06-20
+
+### 修复（mootdx 0.11.x 兼容 · #26 / PR #7）
+- **mootdx 0.11.x 全新安装 BESTIP 空串崩溃**：干净环境下 `Quotes.factory(market='std')` 裸调用会抛 `ValueError: not enough values to unpack (expected 2, got 0)`。根因：`~/.mootdx/config.json` 的 `BESTIP.HQ` 初始为空字符串 `""`（非缺失键），mootdx 内部 `dict.get(key, default)` 取不到 default，拆包失败。**老用户（config 曾填充过 IP）不触发，故此前多次实测漏掉。**
+- **解法：新增 `tdx_client()` helper（Prerequisites 章节），所有 4 处 mootdx 调用统一改走它。** 顺序探测内置可用服务器列表 `_TDX_SERVERS`（TCP 握手），用第一个可达的显式 `server=(ip,port)` 绕过 BESTIP；三级 fallback（bestip 测速 → 裸 factory → 明确 RuntimeError）保证 IP 列表老化/换网/老用户场景都能工作。
+- **明确不锁版本**：锁 `mootdx==0.10.12` 在部分环境（干净 Python 3.9）下 `import mootdx` 因 numpy/pandas 二进制不兼容直接崩，比 0.11.x 更糟。helper 对 0.10 / 0.11 通用，故依赖仍保持 `mootdx>=0.10`。
+
+### 测试
+- helper 探测逻辑实测（2026-06-20，本机网络）：`_TDX_SERVERS` 10/10 TCP 可达；语法 `py_compile` 通过。
+- 早前隔离实测（临时 venv，mootdx 0.11.7）：强制 `BESTIP.HQ=""` 稳定复现 ValueError；改用 `server=(ip,port)` 显式传参后 `bars()` 正常取回 5 根。
+
+### 说明
+- 端点数（28）、数据源数不变；纯兼容性补丁。致谢 PR #7（@ericheroster）提供 helper 思路，本版在其基础上加了三级 fallback 防 IP 老化。
+
+## v3.2.3 — 2026-06-20
+
+### 新增（端点）
+- **§2.1 东财行业研报 `eastmoney_industry_reports()`**：研报层补上行业研报端点（此前只有个股研报）。与个股研报**同一端点** `reportapi.eastmoney.com/report/list`，仅 `qType` 不同（`0`=个股 / `1`=行业）。`industry_code="*"` 拉全行业（实测约 47928 篇 / 4793 页），传东财行业码（如 `1238`=IT服务Ⅱ，实测 1863 篇）精确过滤；返回 record 复用 §2.1 的 `download_pdf()` 下载 PDF（模板通用），走 `em_get` 限流。新增字段说明：`industryName`/`industryCode`/`emRatingName`/`reportType`/`attachPages`/`attachSize`。
+- 同步架构树研报层一行：「东财 reportapi → 个股研报 + 行业研报 + PDF下载 + 评级 + 三年EPS」。
+
+### 测试
+- 实测（2026-06-20，真实公开 API，零 key）：全行业 `qType=1` 返回 `hits=47928`、`TotalPage=4793`，字段含 `industryName`/`industryCode`；按行业码 `1238` 过滤 `hits=1863`；首篇 PDF（`AP202606181823678972`）`H3_{infoCode}_1.pdf` 模板下载成功（2512829 bytes，`%PDF` 头）。
+- 行业码表端点（`bxpa` 等）实测 404 不存在 → 文档注明用 `industry_code="*"` 拉取后从结果反查行业码，无独立码表。
+
+### 变更
+- 端点数 27 → 28（新增东财行业研报）；数据源数不变（仍走东财 reportapi）。
+
+## v3.2.2 — 2026-06-03
+
+### 修复（失效接口替换 + 隐藏 Bug）
+- **§3.3 概念板块归属（#18）**：百度 PAE `getrelatedblock` 接口失效（实测返回 `ResultCode 10003` + 空数组）→ 替换为东财 `slist`（`spt=3`）个股所属板块接口 `eastmoney_concept_blocks()`，**一次请求**拿全行业/概念/地域混合板块列表（板块名 + BK码 + 涨跌幅 + 龙头股），零鉴权、走 `em_get` 限流。函数名 `baidu_concept_blocks` → `eastmoney_concept_blocks`。
+- **§7.1 巨潮公告 orgId 硬编码（#19）**：旧代码用 `gssx0{code}` 规则硬编码 orgId，但巨潮 orgId 并非统一格式（601318→`9900002221`、601398→`jjxt0000019`、688017→`9900041602`），导致大量股票（尤其 601xxx 段）`totalAnnouncement=0` 查不到公告 → 新增 `_cninfo_orgid()`，动态查官方映射表 `szse_stock.json`（模块级缓存，6198 只股），硬编码规则降为 fallback。
+- **综合用法示例隐藏崩溃**：示例第 6 步仍调用 v3.1 已删除的 `baidu_fund_flow_history()`（`recent['mainIn']`）→ 改为 `eastmoney_fund_flow_minute()`；第 5 步 `baidu_concept_blocks` → `eastmoney_concept_blocks`。
+
+### 文档（诚实标注，非代码 Bug）
+- **§4.5 120日资金流 / §5.1 个股新闻**：实测代码本身正常（多网络/时段返回完整数据），但**部分大陆住宅 IP** 会被东财 push2/search-api 连接级间歇风控（表现 `HTTP 000` 或只返回 `passportWeb`）→ 两节各加 ⚠️ 说明：隔几分钟重试 / 换网络 / 调大 `EM_MIN_INTERVAL`。这是 IP 级风控，非代码问题（#18 报告者环境复现，作者多环境实测正常）。
+
+### 测试
+- 新代码原样 exec smoke test（含 `em_get` 助手）实测：`eastmoney_concept_blocks` 茅台 27 / 五粮液 28 / 绿的谐波 21 个板块均非空、分类正确；`cninfo_announcements` 平安 601318（2454条）/ 工行 601398（2483条）原失效股恢复，茅台 600519 老规则 fallback 兼容。
+- §1.3 百度 K线（同 PAE 主机）实测仍正常（`ResultCode 0`，2001 根），百度作为数据源保留。
+
+### 说明
+- 端点数（27）、数据源数不变（百度因 K线 保留，东财 slist 已在册）；本次为失效接口替换 + orgId 动态化 + 示例修复。
+
+## v3.2.1 — 2026-05-30
+
+### 修复（预先存在的解析 Bug，非 v3.2 引入）
+- **§5.1 东财个股新闻 `eastmoney_stock_news`**：东财实际返回里 `result.cmsArticleWebOld` **直接就是文章列表**（非 `{list:[...]}` 嵌套），旧写法 `.get("cmsArticleWebOld", {}).get("list", [])` 对 list 调用 `.get` 触发 `AttributeError` / 返回空 → 改为遍历 `d.get("result", {}).get("cmsArticleWebOld", []) or []`。
+- **§6.4 新浪财报三表 `sina_financial_report`**：新浪实际结构是 `result.data.report_list`（按报告期如 `'20260331'` 为键的 dict，每期对象的 `data` 字段才是行项列表 `[{item_title, item_value, item_tongbi}]`），旧写法取 `result.data.{report_type}` **永久返回空** → 改为遍历 `report_list` 期次（倒序），每期从 `data` 按 `item_title` 提取，返回「按报告期记录列表」（`{"报告期": ..., "<科目>": <值>, "<科目>_同比": <同比>}`）。新增 `num` 参数（默认 8 期）。
+
+### 测试
+- 两函数用真实公开 API（茅台 600519，零 key）实测：个股新闻返回 20 条、字段（date/title/content/mediaName/url）齐全；财报三表 lrb/fzb/llb 各返回 8 期、净利润+同比可取。
+- 验证方式：exec SKILL.md 代码块本身（含 `em_get` 助手）直连真实 API 断言非空。
+
+### 说明
+- 端点数（27）、数据源数不变；修复来自姊妹项目 astock-peg 移植时实测发现并验证的正确修法。
+
+## v3.2 — 2026-05-30
+
+### 新增（数据源优先级 + 东财防封）
+- **数据源优先级原则**：新增「数据源优先级 & 东财防封」章节，明确「能用通达信(mootdx)/腾讯（不封 IP）就别用东财，东财仅用于其独有数据」
+- **统一节流入口 `em_get()`**：所有东财端点（datacenter / push2 / push2his / reportapi / search-api / np-weblist 共 9 处调用）改用 `em_get()`，内置：
+  - 串行限流（`EM_MIN_INTERVAL=1.0s` 最小间隔 + 0.1~0.5s 随机抖动）
+  - 复用 `EM_SESSION`（Keep-Alive）+ 默认 UA
+  - 批量任务调大 `EM_MIN_INTERVAL` 即进一步降速
+- **东财风控阈值文档化**：列出触发封禁的实测阈值（每秒>5 / 并发≥10 / 1分≥200 / 5分≥300）与 5 条防封铁律
+
+### 修复（失效接口）
+- **财联社快讯下线（#14）**：`cls.cn/nodeapi/telegraphList` 等旧接口全面 404（网站迁 Next.js + 新 API 需签名）→ §5.2 标注弃用，全市场快讯改用 §5.3 东财全球资讯（np-weblist）
+
+### 变更
+- 端点数 28 → 27（财联社快讯下线）
+- README 数据源优先级表重排：mootdx/腾讯置顶（标注「不封 IP」），东财降至末位（标注「中—有风控会封 IP」）
+- 用真实东财 API（datacenter 股东户数 + np-weblist 全球资讯）实测 `em_get` 功能与限流间隔（间隔 ≥1s 通过）
+
 ## v3.1 — 2026-05-19
 
 ### 修复（失效接口替换）

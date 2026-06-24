@@ -1,18 +1,38 @@
 ---
 name: a-stock-data
-description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
+description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财个股+全球资讯)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。优先用通达信(mootdx)/腾讯(不封IP)，东财接口已内置限流防封。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
 origin: custom
-version: 3.1
+version: 3.2.3
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V3.1
+# A股全栈数据工具包 V3.2.3
 
-七层数据架构，28 个端点，全部实测可用（2026-05-19 验证，覆盖主板/中小板/科创板/ST）。
+七层数据架构，28 个端点实测可用（2026-06 验证；财联社快讯已下线，详见 §5.2），覆盖主板/中小板/科创板/ST。
 
+> **V3.2.3（行业研报新增）：**
+> - **§2.1 东财行业研报 `eastmoney_industry_reports()`**：研报层补上行业研报端点（此前只有个股研报）。与个股研报**同端点** `reportapi.eastmoney.com/report/list`，仅 `qType=1`；`industry_code="*"` 拉全行业、传东财行业码（如 `1238`=IT服务Ⅱ）精确过滤，PDF 复用 `download_pdf()`，走 `em_get` 限流。端点数 27 → 28。
+> - 实测（2026-06-20）：全行业 `hits=47928`、按行业码 `1238` 过滤 `hits=1863`，首篇 PDF `H3_{infoCode}_1.pdf` 下载成功（2.5MB，`%PDF` 头）；行业码表端点（`bxpa` 等）404 不存在，用 `"*"` 拉取后从结果反查行业码。
+
+> **V3.2.2（失效接口替换 + 隐藏 Bug 修复）：**
+> - **§3.3 概念板块归属（#18）**：百度 PAE `getrelatedblock` 失效（`ResultCode 10003` + 空数组）→ 改用东财 `slist`（`spt=3`）`eastmoney_concept_blocks()`，一次请求拿全个股所属板块（行业/概念/地域 + BK码 + 涨跌幅 + 龙头股），零鉴权走 `em_get` 限流。
+> - **§7.1 巨潮公告 orgId（#19）**：硬编码 `gssx0{code}` 致大量 601xxx 股票 `totalAnnouncement=0` → 新增 `_cninfo_orgid()` 动态查官方映射表 `szse_stock.json`（6198 只股，模块级缓存），硬编码降为 fallback。
+> - **综合示例修复**：示例仍调用 v3.1 已删的 `baidu_fund_flow_history` → 改 `eastmoney_fund_flow_minute`。
+> - **§4.5/§5.1 风控说明**：部分大陆住宅 IP 被东财间歇风控（`HTTP 000`/空）非代码 Bug，加重试/换网络提示。
+> - 新代码原样 exec smoke test 实测：板块归属 茅台27/五粮液28/绿的谐波21；公告 平安601318/工行601398 原失效股恢复。
+>
+> **V3.2.1（Bug 修复）：** 修复两个内嵌函数的解析逻辑（预先存在，非 V3.2 引入）——
+> - **§5.1 东财个股新闻**：东财实际返回里 `result.cmsArticleWebOld` 直接就是文章列表，旧写法对 list 调 `.get("list")` 触发 AttributeError / 返回空 → 改为遍历 `cmsArticleWebOld` 列表本身。
+> - **§6.4 新浪财报三表**：新浪实际结构是 `result.data.report_list`（按报告期为键的 dict，每期 `data` 才是行项列表），旧写法取 `result.data.{lrb}` 永久返回空 → 改为遍历 `report_list` 期次、从每期 `data` 按 `item_title` 提取。
+> - 两函数均用茅台 600519 公开 API（零 key）实测返回非空、字段正确。
+>
+> **V3.2（防封 + 失效修复）：**
+> - **数据源优先级 + 东财防封**：明确「通达信(mootdx)/腾讯不封IP 优先用，东财仅用于其独有数据」原则；新增统一节流入口 `em_get()`，所有东财接口内置串行限流（间隔≥1s+随机抖动）+ 会话复用，AI 抄代码即自带防封。详见「数据源优先级 & 东财防封」章节。
+> - **财联社快讯下线（#14）**：`cls.cn` 旧 API 全面 404，标注弃用并改用东财全球资讯。
+>
 > **V3.1 修复：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易 RPT 报表名更新、机构席位改用 BUY/SELL 明细筛选）+ 修复东财全球资讯 req_trace 参数 + 修复巨潮公告 orgId 格式。
 >
 > **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。
@@ -26,14 +46,14 @@ version: 3.1
 └── 百度股市通     → K线带MA5/10/20 (V3.0 新增，HTTP)
 
 研报层
-├── 东财 reportapi → 研报列表 + PDF下载 + 评级 + 三年EPS
+├── 东财 reportapi → 个股研报 + 行业研报 + PDF下载 + 评级 + 三年EPS
 ├── 同花顺 THS     → 一致预期EPS (直连 basic.10jqka.com.cn)
 └── iwencai        → NL语义搜索研报 (唯一能力，需X-Claw)
 
 信号层
 ├── 同花顺热点     → 当日强势股 + 题材归因 reason tags (零鉴权 73ms)
 ├── 同花顺北向     → hgt/sgt 分钟资金流向 + 本地自缓存历史
-├── 百度股市通     → 概念板块归属 (HTTP)
+├── 东财 slist     → 个股所属板块/概念归属 (V3.2.2 替换百度PAE)
 ├── 东财 push2     → 个股资金流向 分钟级 (V3.1 替换百度PAE)
 ├── 龙虎榜席位     → 上榜记录 + 买卖席位 TOP5 + 机构动向 (datacenter-web)
 ├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (datacenter-web)
@@ -49,8 +69,8 @@ version: 3.1
 
 新闻层
 ├── 东财个股新闻   → 个股相关新闻 (search-api-web JSONP)
-├── 财联社快讯     → 全市场实时电报 (cls.cn)
-└── 东财全球资讯   → 7×24 财经快讯 (np-weblist)
+├── 财联社快讯     → ⚠️ 已下线 (cls.cn 迁 Next.js，旧API 404)
+└── 东财全球资讯   → 7×24 财经快讯 (np-weblist，财联社替代)
 
 基础数据层
 ├── mootdx finance → 季报快照 (37字段, EPS/ROE/净利)
@@ -62,6 +82,53 @@ version: 3.1
 ├── 巨潮 cninfo    → 公告全文检索+下载 (cninfo.com.cn)
 └── mootdx F10     → 最新公告摘要
 ```
+
+## 数据源优先级 & 东财防封（重要，先读）
+
+### 优先级原则：能用通达信/腾讯，就别用东财
+
+| 优先级 | 数据源 | 协议 | 封 IP 风险 | 覆盖 |
+|--------|--------|------|-----------|------|
+| **1（首选）** | **mootdx（通达信）** | TCP 7709 二进制 | **不封 IP** | K线、五档盘口、逐笔成交、财务快照、F10 |
+| **2** | **腾讯财经** | HTTP GBK | **不封 IP** | 实时价、PE/PB/市值/换手率/涨跌停、指数、ETF |
+| **3** | 新浪 / 巨潮 / 同花顺 | HTTP | 低 | 财报三表、公告、一致预期/热点 |
+| **4（仅独有数据才用）** | **东财 eastmoney** | HTTP | **有风控，会封 IP** | 见下 |
+
+**凡是行情 / K线 / 实时价 / 市值 / 财务三表能从 mootdx 或腾讯拿到的，一律走它们**——TCP 协议和腾讯接口实测不封 IP，可放心高频调用。
+
+### 东财只用于它「独有、别处拿不到」的数据
+
+下列数据**只有东财有**，通达信/腾讯/新浪都没有，必须用东财（但要限流）：
+
+> 龙虎榜席位 · 全市场龙虎榜 · 限售解禁日历 · 融资融券 · 大宗交易 · 股东户数 · 分红送转 · 个股资金流向（分钟/日级）· 行业板块排名 · 研报列表/PDF · 个股新闻 · 全球资讯
+
+### 东财风控阈值（社区实测，2026-05）
+
+| 行为 | 触发封禁的阈值 | 风险 |
+|------|---------------|------|
+| 每秒请求数 | > 5 次/秒 | 高 |
+| 单 IP 并发连接 | ≥ 10 | 高 |
+| 1 分钟请求总数 | ≥ 200 次 | 中高 |
+| 5 分钟请求总数 | ≥ 300 次 | 触发封禁 |
+| User-Agent | 空 UA / 无浏览器特征 | 中 |
+
+被封表现：连续请求后 `403` / `429` / 连接超时 / 返回空数据。临时封禁通常几分钟到几小时。
+
+### 防封铁律（调用东财时必须遵守）
+
+1. **串行，不并发**——绝不对东财开多线程/协程并发请求
+2. **每次间隔 ≥ 1 秒 + 随机抖动**（QPS ≤ 2），批量筛选时调大到 1.5~2 秒
+3. **复用 HTTP 会话**（Keep-Alive），不要每次新建连接
+4. **带正常 UA + Referer**（本 SKILL 各端点已配好）
+5. **批量场景每只股票之间 sleep**——AI 跑批量循环（如筛选 100 只股逐个拉龙虎榜/资金流）是被封的头号元凶
+
+### 已内置限流：所有东财请求走 `em_get()`
+
+本 SKILL 提供统一的节流入口 `em_get()`（定义见下方「东财数据中心统一查询（共用 helper）」），它自动做到：串行限流（最小间隔 `EM_MIN_INTERVAL=1.0s` + 随机抖动）+ 复用 `EM_SESSION`（Keep-Alive）+ 默认 UA。**所有 `eastmoney.com` 端点的代码块都已改用 `em_get` 而非裸 `requests.get`**，AI 直接抄代码即自带防封。批量任务把 `EM_MIN_INTERVAL` 调大即可进一步降速。
+
+> 注：`em_get` / `EM_SESSION` / `EM_MIN_INTERVAL` 是所有东财代码块共用的前置定义，使用任一东财端点前需先执行「共用 helper」代码块。
+
+---
 
 ## When to Activate
 
@@ -96,7 +163,7 @@ pip install mootdx requests pandas stockstats
 
 | 依赖 | 版本要求 | 用途 |
 |------|---------|------|
-| mootdx | >= 0.10 | TCP行情+财务+F10（唯一非HTTP依赖） |
+| mootdx | >= 0.10 | TCP行情+财务+F10（唯一非HTTP依赖）；0.11.x 用 `tdx_client()` 规避 BESTIP bug，见上节 |
 | requests | any | 所有HTTP API直连 |
 | pandas | any | 数据处理+HTML表格解析 |
 | stockstats | any | 技术指标计算（RSI/MACD/BOLL等） |
@@ -115,6 +182,63 @@ export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 ```
 
 其他数据源（mootdx / 腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮）全部免费，无需 key。
+
+### mootdx 客户端（必读，规避 0.11.x BESTIP 空串 bug）
+
+> **已知 bug（mootdx 0.11.x）：** 全新安装后 `Quotes.factory(market='std')` 裸调用可能抛 `ValueError: not enough values to unpack (expected 2, got 0)`。
+> 根因：`~/.mootdx/config.json` 的 `BESTIP.HQ` 初始是空字符串 `""`（不是缺失键），mootdx 用 `dict.get(key, default)` 取不到 default，拆包失败。**老用户（config 曾填充过 IP）不会触发，所以容易漏测。**
+> **不要靠锁版本解决：** 锁 `mootdx==0.10.12` 在部分环境（如干净的 Python 3.9）下 `import mootdx` 会因 numpy/pandas 二进制不兼容直接崩。正确做法是用下面的 `tdx_client()`——显式传 server 绕过 BESTIP，对 0.10 / 0.11 都适用。
+
+**统一用以下 helper 创建客户端（所有 mootdx 调用都走它）：**
+
+```python
+import socket
+from mootdx.quotes import Quotes
+
+# 实测可用的备选服务器（按延迟排序，2026-06 验证）
+_TDX_SERVERS = [
+    ('119.97.185.59', 7709), ('124.70.133.119', 7709), ('116.205.183.150', 7709),
+    ('123.60.73.44', 7709),  ('116.205.163.254', 7709), ('121.36.225.169', 7709),
+    ('123.60.70.228', 7709), ('124.71.9.153', 7709),    ('110.41.147.114', 7709),
+    ('124.71.187.122', 7709),
+]
+
+def _probe(ip, port, timeout=2.0):
+    """TCP 握手探测，判断服务器是否可达"""
+    try:
+        with socket.create_connection((ip, port), timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+def tdx_client(market='std'):
+    """
+    创建 mootdx 客户端，规避 0.11.x BESTIP.HQ 空串 bug。
+    顺序兜底，保证 IP 列表老化/换网时仍能工作：
+      1) 顺序探测 _TDX_SERVERS，用第一个 TCP 可达的显式 server；
+      2) 全部不可达 → 回退 mootdx 自带 bestip 测速选优；
+      3) 再不行 → 回退裸 factory（老用户 config 已有可用 BESTIP 时成立）；
+      4) 仍失败 → 抛 RuntimeError，明确报错而非死等。
+    """
+    for ip, port in _TDX_SERVERS:
+        if _probe(ip, port):
+            return Quotes.factory(market=market, server=(ip, port))
+    try:
+        return Quotes.factory(market=market, bestip=True)   # fallback 1
+    except Exception:
+        pass
+    try:
+        return Quotes.factory(market=market)                # fallback 2
+    except Exception as e:
+        raise RuntimeError(
+            "所有 mootdx 服务器均不可达。海外网络通常全部超时（TCP 7709），"
+            "请走国内代理或更新 _TDX_SERVERS 列表。原始错误：%s" % e
+        )
+
+# 用法：client = tdx_client()   # 替代所有 Quotes.factory(market='std')
+```
+
+> **海外 IP 用户：** mootdx 走通达信 TCP 7709，海外环境通常全部超时。`tdx_client()` 会快速失败给出明确报错，而非死等。
 
 ### 市场前缀规则（全局通用）
 
@@ -146,22 +270,46 @@ def get_prefix(code: str) -> str:
 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用同一 base URL：
 
 ```python
+import time
+import random
 import requests
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 
+# ── 东财防封：全局节流 + 会话复用 ────────────────────────────────────
+# 东财系 HTTP 接口（push2 / datacenter / reportapi / search / np-weblist）有风控：
+#   每秒 >5 次 / 单 IP 并发 ≥10 / 1 分钟 ≥200 次  →  临时封 IP。
+# 所有 eastmoney.com 请求一律走 em_get()：串行限流（最小间隔 + 随机抖动）+ 复用
+# Keep-Alive 会话，批量调用时自动降速，避免被封。详见「数据源优先级 & 东财防封」章节。
+EM_SESSION = requests.Session()
+EM_SESSION.headers.update({"User-Agent": UA})
+EM_MIN_INTERVAL = 1.0          # 两次东财请求最小间隔(秒)；批量筛选建议调大到 1.5~2
+_em_last_call = [0.0]          # 模块级上次请求时间戳
+
+def em_get(url: str, params: dict | None = None, headers: dict | None = None,
+           timeout: int = 15, **kwargs):
+    """东财统一请求入口：自动节流 + 复用 session + 默认 UA。
+    所有 eastmoney.com 接口都应通过它请求，避免高频被封 IP。"""
+    wait = EM_MIN_INTERVAL - (time.time() - _em_last_call[0])
+    if wait > 0:
+        time.sleep(wait + random.uniform(0.1, 0.5))
+    try:
+        return EM_SESSION.get(url, params=params, headers=headers, timeout=timeout, **kwargs)
+    finally:
+        _em_last_call[0] = time.time()
+
 def eastmoney_datacenter(report_name: str, columns: str = "ALL",
                           filter_str: str = "", page_size: int = 50,
                           sort_columns: str = "", sort_types: str = "-1") -> list[dict]:
-    """东财数据中心统一查询 — 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用"""
+    """东财数据中心统一查询 — 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用（已内置限流）"""
     params = {
         "reportName": report_name, "columns": columns,
         "filter": filter_str, "pageNumber": "1", "pageSize": str(page_size),
         "sortColumns": sort_columns, "sortTypes": sort_types,
         "source": "WEB", "client": "WEB",
     }
-    r = requests.get(DATACENTER_URL, params=params, headers={"User-Agent": UA}, timeout=15)
+    r = em_get(DATACENTER_URL, params=params, timeout=15)
     d = r.json()
     if d.get("result") and d["result"].get("data"):
         return d["result"]["data"]
@@ -179,7 +327,7 @@ TCP 二进制协议，连通达信服务器(7709)，无需注册，不封IP。
 ```python
 from mootdx.quotes import Quotes
 
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 的 tdx_client() helper（规避 0.11.x BESTIP bug；等价 Quotes.factory(market='std')）
 
 # === K线数据 ===
 # market: 0=深圳, 1=上海
@@ -360,8 +508,6 @@ UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
 def eastmoney_reports(code: str, max_pages: int = 5) -> list[dict]:
     """拉取指定股票的研报列表"""
-    session = requests.Session()
-    session.headers.update({"User-Agent": UA, "Referer": "https://data.eastmoney.com/"})
     all_records = []
     for page in range(1, max_pages + 1):
         params = {
@@ -372,7 +518,8 @@ def eastmoney_reports(code: str, max_pages: int = 5) -> list[dict]:
             "orgCode": "", "code": code, "rcode": "",
             "p": str(page), "pageNum": str(page), "pageNumber": str(page),
         }
-        r = session.get(REPORT_API, params=params, timeout=30)
+        r = em_get(REPORT_API, params=params,
+                   headers={"Referer": "https://data.eastmoney.com/"}, timeout=30)  # 已内置限流
         d = r.json()
         rows = d.get("data") or []
         if not rows:
@@ -380,7 +527,6 @@ def eastmoney_reports(code: str, max_pages: int = 5) -> list[dict]:
         all_records.extend(rows)
         if page >= (d.get("TotalPage", 1) or 1):
             break
-        time.sleep(0.3)
     return all_records
 
 def download_pdf(record: dict, target_dir: str = "./reports") -> str | None:
@@ -396,7 +542,7 @@ def download_pdf(record: dict, target_dir: str = "./reports") -> str | None:
     if target.exists():
         return str(target)
     url = PDF_TPL.format(info_code=info_code)
-    r = requests.get(url, headers={"User-Agent": UA, "Referer": "https://data.eastmoney.com/"}, timeout=60)
+    r = em_get(url, headers={"Referer": "https://data.eastmoney.com/"}, timeout=60)
     if r.status_code == 200 and len(r.content) >= 1024:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(r.content)
@@ -423,6 +569,61 @@ for r in reports[:5]:
 | predictNextTwoYearEps | 后年EPS预测 |
 | emRatingName | 评级(买入/增持/...) |
 | indvInduName | 行业分类 |
+
+#### 行业研报列表（qType=1）
+
+与个股研报**同一端点**（`reportapi.eastmoney.com/report/list`），仅 `qType` 不同：`qType=0` 个股研报，`qType=1` 行业研报。返回 record 可直接喂给上面的 `download_pdf()`（PDF 模板通用）。
+
+```python
+def eastmoney_industry_reports(industry_code: str = "*", max_pages: int = 5,
+                               begin: str = "2024-01-01") -> list[dict]:
+    """拉取行业研报列表（qType=1）。
+    industry_code="*" = 全行业；传东财行业码（如 "1238"=IT服务Ⅱ）= 单行业。
+    行业名 / 行业码在每条 record 的 industryName / industryCode 字段。"""
+    all_records = []
+    for page in range(1, max_pages + 1):
+        params = {
+            "industryCode": industry_code, "pageSize": "100", "industry": "*",
+            "rating": "*", "ratingChange": "*",
+            "beginTime": begin, "endTime": "2030-01-01",
+            "pageNo": str(page), "fields": "", "qType": "1",
+        }
+        r = em_get(REPORT_API, params=params,
+                   headers={"Referer": "https://data.eastmoney.com/"}, timeout=30)  # 已内置限流
+        d = r.json()
+        rows = d.get("data") or []
+        if not rows:
+            break
+        all_records.extend(rows)
+        if page >= (d.get("TotalPage", 1) or 1):
+            break
+    return all_records
+
+# 用法
+# 1) 全行业最新研报
+reports = eastmoney_industry_reports("*", max_pages=2)
+print(f"共 {len(reports)} 篇行业研报")
+for r in reports[:5]:
+    print(f"  {r.get('publishDate','')[:10]} | {r.get('industryName')} | {r.get('orgSName')} | {r.get('title','')[:50]}")
+
+# 2) 单行业（IT服务Ⅱ，行业码 1238）+ 下载首篇 PDF（复用 2.1 的 download_pdf）
+it = eastmoney_industry_reports("1238", max_pages=1)
+if it:
+    download_pdf(it[0])
+```
+
+行业研报特有/常用字段（其余字段同 2.1 个股研报）：
+
+| 字段 | 含义 |
+|------|------|
+| industryName | 行业名称（如 IT服务Ⅱ、风电设备、光伏设备） |
+| industryCode | 东财行业代码（用于 `industry_code` 精确过滤） |
+| emRatingName | 行业评级（买入/增持/中性/...） |
+| reportType | 报告类型 |
+| attachPages / attachSize | PDF 页数 / 大小(KB) |
+| infoCode | 喂给 `download_pdf()` 拼 PDF URL |
+
+> **行业码怎么拿：** 东财行业码不是通用记忆码，没有公开的码表端点（`bxpa` 等已 404）。常用做法：先用 `industry_code="*"` 拉一批，从结果的 `industryName`/`industryCode` 找到目标行业的码，再用该码精确过滤。
 
 ### 2.2 同花顺一致预期EPS（直连 basic.10jqka.com.cn）
 
@@ -723,62 +924,59 @@ hist = _load_northbound_history(20)
 print(hist)
 ```
 
-### 3.3 百度股市通 — 概念板块归属
+### 3.3 东财 slist — 个股所属板块/概念归属（V3.2.2 替换百度）
 
-**核心价值：** 一次调用拿到个股所属的行业（申万一级/二级）、概念（多个）、地域三维分类，含当日涨跌幅。
+**核心价值：** 一次调用拿到个股所属的全部板块（行业 + 概念 + 地域混合），含板块代码（BK码）、当日涨跌幅、板块龙头股。题材归因、板块联动分析必备。
+
+> **V3.2.2 替换说明：** 百度 PAE `getrelatedblock` 接口已失效（实测返回 `ResultCode 10003` + 空数组，#18），改用东财 `slist` 个股所属板块接口（`spt=3`，一次请求拿全，零鉴权）。东财把行业/概念/地域混在**一个列表**里返回，板块名本身已自解释（如「食品饮料」是行业、「贵州板块」是地域、「酿酒概念」是概念），AI 直接用板块名做题材归因即可。
 
 ```python
-import requests
-
-_BAIDU_PAE_HEADERS = {
-    "Host": "finance.pae.baidu.com",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/117.0.0.0",
-    "Accept": "application/vnd.finance-web.v1+json",
-    "Origin": "https://gushitong.baidu.com",
-    "Referer": "https://gushitong.baidu.com/",
-}
-
-def baidu_concept_blocks(code: str) -> dict:
+def eastmoney_concept_blocks(code: str) -> dict:
     """
-    百度股市通概念板块归属。
-    返回: {industry: [...], concept: [...], region: [...], concept_tags: [...]}
+    个股所属板块/概念归属（东财 slist，一次请求拿全，已内置限流）。
+    返回: {total, boards: [{name, code(BK码), change_pct, lead_stock}], concept_tags: [板块名...]}
+    boards 混合 行业/概念/地域，板块名自解释；concept_tags 是所有板块名的便捷列表。
     """
-    url = (
-        f"https://finance.pae.baidu.com/api/getrelatedblock"
-        f"?code={code}&market=ab"
-        f"&typeCode=all&finClientType=pc"
-    )
-    r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
-    d = r.json()
-    if str(d.get("ResultCode", -1)) != "0":
-        raise RuntimeError(f"百度PAE错误: {d}")
+    market_code = 1 if code.startswith("6") else 0
+    params = {
+        "fltt": "2", "invt": "2",
+        "secid": f"{market_code}.{code}",
+        "spt": "3", "pi": "0", "pz": "200", "po": "1",
+        "fields": "f12,f14,f3,f128",
+    }
+    headers = {"User-Agent": UA, "Referer": "https://quote.eastmoney.com/"}
+    try:
+        r = em_get("https://push2.eastmoney.com/api/qt/slist/get",
+                   params=params, headers=headers, timeout=15)
+        d = r.json()
+    except Exception as e:
+        print(f"[WARN] 东财板块归属请求失败: {e}")
+        return {"total": 0, "boards": [], "concept_tags": []}
 
-    result = {"industry": [], "concept": [], "region": [], "concept_tags": []}
-    for block in d.get("Result", []):
-        block_type = block.get("type", "")
-        for item in block.get("list", []):
-            entry = {
-                "name": item.get("name", ""),
-                "change_pct": item.get("increase", ""),
-                "desc": item.get("desc", ""),
-            }
-            if "行业" in block_type:
-                result["industry"].append(entry)
-            elif "概念" in block_type:
-                result["concept"].append(entry)
-                result["concept_tags"].append(entry["name"])
-            elif "地域" in block_type:
-                result["region"].append(entry)
-    return result
+    diff = (d.get("data") or {}).get("diff") or {}
+    items = diff.values() if isinstance(diff, dict) else diff
+    boards = []
+    for it in items:
+        boards.append({
+            "name": it.get("f14", ""),         # 板块名
+            "code": it.get("f12", ""),         # BK 板块代码
+            "change_pct": it.get("f3", ""),    # 板块当日涨跌幅
+            "lead_stock": it.get("f128", ""),  # 板块龙头股
+        })
+    return {
+        "total": len(boards),
+        "boards": boards,
+        "concept_tags": [b["name"] for b in boards],
+    }
 
 # 用法
-blocks = baidu_concept_blocks("688017")
-print("行业:", [b["name"] for b in blocks["industry"]])
-print("概念:", blocks["concept_tags"])
-print("地域:", [b["name"] for b in blocks["region"]])
+blocks = eastmoney_concept_blocks("600519")
+print(f"共 {blocks['total']} 个板块")
+print("板块归属:", blocks["concept_tags"])
+# → ['食品饮料', '白酒Ⅲ', '白酒Ⅱ', '贵州板块', '酿酒概念', 'HS300_', ...]
 ```
 
-> **踩坑：** `ResultCode` 返回类型不稳定——有时 int `0`，有时 string `"0"`。必须用 `str()` 统一比较。
+> **注意：** 东财不区分行业/概念/地域类型（混在一个列表返回）。如需精确分类可按板块名判断，或另查全市场板块清单（`clist` + `m:90+t:1/2/3`）——但后者每次需多发请求、大页易触发风控，不推荐在批量场景用。
 
 ### 3.4 东财 push2 — 个股资金流向（分钟级）
 
@@ -809,7 +1007,7 @@ def eastmoney_fund_flow_minute(code: str) -> list[dict]:
         "Origin": "https://quote.eastmoney.com",
     }
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=10)
+        r = em_get(url, params=params, headers=headers, timeout=10)
         d = r.json()
     except Exception as e:
         print(f"[WARN] push2 资金流请求失败: {e}")
@@ -1021,7 +1219,7 @@ def industry_comparison(top_n: int = 20) -> dict:
         "fields": "f2,f3,f4,f12,f13,f14,f104,f105,f128,f136,f140,f141,f207",
     }
     headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
+    r = em_get(url, params=params, headers=headers, timeout=15)
     d = r.json()
     items = d.get("data", {}).get("diff", [])
     if not items:
@@ -1309,7 +1507,7 @@ def stock_fund_flow_120d(code: str) -> list[dict]:
         "Origin": "https://quote.eastmoney.com",
     }
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=15)
+        r = em_get(url, params=params, headers=headers, timeout=15)
         d = r.json()
     except Exception as e:
         print(f"[WARN] push2 资金流请求失败: {e}")
@@ -1340,6 +1538,8 @@ recent_20 = data[-20:]
 total_main = sum(d["main_net"] for d in recent_20)
 print(f"\n近20日主力累计净流入: {total_main/1e8:.2f}亿")
 ```
+
+> **⚠️ 大陆住宅 IP 间歇封锁（#18）：** push2/push2his 系列对**部分大陆住宅宽带 IP** 有连接级风控，表现为偶发 `HTTP 000`（连接被拒/超时）或返回空——**这不是代码问题**（同一代码在其他网络/时段实测正常）。遇到时：① 隔几分钟重试；② 换网络环境（如手机热点）；③ 降低请求频率（调大 `EM_MIN_INTERVAL`）。日级资金流务实替代：仍可用 mootdx 算量价，或换时段重试。
 
 ---
 
@@ -1372,7 +1572,7 @@ def eastmoney_stock_news(code: str, page_size: int = 20) -> list[dict]:
     }, separators=(',', ':'))
     params = {"cb": cb, "param": inner_params}
     headers = {"User-Agent": UA, "Referer": "https://so.eastmoney.com/"}
-    r = requests.get(url, params=params, headers=headers, timeout=15)
+    r = em_get(url, params=params, headers=headers, timeout=15)
 
     # 解析 JSONP
     text = r.text
@@ -1380,7 +1580,8 @@ def eastmoney_stock_news(code: str, page_size: int = 20) -> list[dict]:
     d = json.loads(json_str)
 
     rows = []
-    articles = d.get("result", {}).get("cmsArticleWebOld", {}).get("list", [])
+    # 东财实际返回里 result.cmsArticleWebOld 直接就是文章列表（非 {list:[...]} 嵌套）
+    articles = d.get("result", {}).get("cmsArticleWebOld", []) or []
     for a in articles:
         rows.append({
             "title": re.sub(r'<[^>]+>', '', a.get("title", "")),
@@ -1397,7 +1598,14 @@ for n in news[:5]:
     print(f"  {n['time']} | {n['source']} | {n['title']}")
 ```
 
-### 5.2 财联社快讯（直连 cls.cn）
+> **⚠️ 间歇性返回空（#18）：** 部分大陆住宅 IP 调本接口会只拿到 `passportWeb`（股民资料）而无 `cmsArticleWebOld`（文章列表）——这是东财对该 IP 的间歇风控，非代码问题。代码已对空结果安全返回 `[]`；遇到时隔几分钟或换网络重试即可。
+
+### 5.2 财联社快讯（直连 cls.cn）— ⚠️ 已下线，改用 §5.3
+
+> **⚠️ 2026-05 已失效（#14）：** 财联社网站迁移到 Next.js 架构，旧版公开接口
+> `cls.cn/nodeapi/telegraphList` 全面下线（返回 404），新版 API 需签名认证，无法
+> 公开 HTTP 调用。**全市场实时快讯请改用 §5.3「东财全球资讯」**（7×24 滚动，免费无 key）。
+> 下面代码仅作历史参考，已不可用。
 
 ```python
 import requests
@@ -1448,7 +1656,7 @@ def eastmoney_global_news(page_size: int = 50) -> list[dict]:
         "req_trace": str(uuid.uuid4()),
     }
     headers = {"User-Agent": UA, "Referer": "https://kuaixun.eastmoney.com/"}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
+    r = em_get(url, params=params, headers=headers, timeout=10)
     d = r.json()
 
     rows = []
@@ -1475,7 +1683,7 @@ for n in news[:10]:
 ```python
 from mootdx.quotes import Quotes
 
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 的 tdx_client() helper（规避 0.11.x BESTIP bug；等价 Quotes.factory(market='std')）
 
 # market: 0=深圳, 1=上海
 fin = client.finance(symbol='688017')
@@ -1493,7 +1701,7 @@ fin = client.finance(symbol='688017')
 ```python
 from mootdx.quotes import Quotes
 
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 的 tdx_client() helper（规避 0.11.x BESTIP bug；等价 Quotes.factory(market='std')）
 
 # 9 大类文本数据:
 categories = [
@@ -1527,7 +1735,7 @@ def eastmoney_stock_info(code: str) -> dict:
         "secid": f"{market_code}.{code}",
     }
     headers = {"User-Agent": UA}
-    r = requests.get(url, params=params, headers=headers, timeout=10)
+    r = em_get(url, params=params, headers=headers, timeout=10)
     d = r.json().get("data", {})
     return {
         "code": d.get("f57", ""),
@@ -1551,12 +1759,15 @@ print(f"{info['name']}({info['code']}): 行业={info['industry']} 总市值={inf
 ```python
 import requests
 
-def sina_financial_report(code: str, report_type: str = "lrb") -> list[dict]:
+def sina_financial_report(code: str, report_type: str = "lrb", num: int = 8) -> list[dict]:
     """
     新浪财报三表。
     code: 6位代码
     report_type: "fzb"(资产负债表) / "lrb"(利润表) / "llb"(现金流量表)
-    返回: 按报告期排序的财务数据列表
+    num: 取最近 N 期（默认 8 期）
+    返回: 按报告期倒序的记录列表，每期一条 dict：
+          {"报告期": "2026-03-31", "<科目>": "<值>", "<科目>_同比": <同比>, ...}
+          （item_value 为新浪原始字符串数值，仅在有同比时附 "_同比" 键）
     """
     prefix = "sh" if code.startswith("6") else "sz"
     paper_code = f"{prefix}{code}"
@@ -1566,24 +1777,33 @@ def sina_financial_report(code: str, report_type: str = "lrb") -> list[dict]:
         "source": report_type,
         "type": "0",
         "page": "1",
-        "num": "20",  # 最近20期
+        "num": str(num),
     }
     headers = {"User-Agent": UA}
     r = requests.get(url, params=params, headers=headers, timeout=15)
-    d = r.json()
+    # 新浪实际结构: result.data.report_list 是「按报告期(如 '20260331')为键」的 dict,
+    # 每期对象的 data 字段才是行项列表 [{item_title, item_value, item_tongbi}]。
+    report_list = r.json().get("result", {}).get("data", {}).get("report_list", {}) or {}
 
     rows = []
-    result = d.get("result", {}).get("data", {})
-    # 结构: {report_type: [{...}, ...]}
-    items = result.get(report_type, [])
-    if isinstance(items, list):
-        rows = items
+    for period in sorted(report_list.keys(), reverse=True)[:num]:
+        obj = report_list[period]
+        rec = {"报告期": f"{period[:4]}-{period[4:6]}-{period[6:8]}"}
+        for it in obj.get("data", []) or []:
+            title = it.get("item_title", "")
+            if not title or it.get("item_value") is None:
+                continue
+            rec[title] = it.get("item_value")
+            tongbi = it.get("item_tongbi")
+            if tongbi not in (None, ""):
+                rec[title + "_同比"] = tongbi
+        rows.append(rec)
     return rows
 
 # 用法: 利润表
 lrb = sina_financial_report("600519", "lrb")
 for item in lrb[:3]:
-    print(f"报告期: {item.get('报告日', '')} 净利润: {item.get('净利润', '')}")
+    print(f"报告期: {item.get('报告期', '')} 净利润: {item.get('净利润', '')}")
 
 # 用法: 资产负债表
 fzb = sina_financial_report("600519", "fzb")
@@ -1608,19 +1828,39 @@ def _cninfo_ts_to_date(ts):
         return datetime.fromtimestamp(ts / 1000).strftime("%Y-%m-%d")
     return str(ts)[:10] if ts else ""
 
+# 巨潮 股票→orgId 映射（模块级缓存，首次调用时拉取一次，全程复用）
+_CNINFO_ORGID_MAP = {}
+
+def _cninfo_orgid(code: str) -> str:
+    """查股票真实 orgId。巨潮 orgId 并非统一 `gssx0{code}` 格式（如 601318→9900002221、
+    601398→jjxt0000019、688017→9900041602），硬编码会导致大量股票（尤其 601xxx 段）
+    返回 totalAnnouncement=0、查不到公告（#19）。优先动态查官方映射表，查不到再回退硬编码。"""
+    global _CNINFO_ORGID_MAP
+    if not _CNINFO_ORGID_MAP:
+        try:
+            r = requests.get("http://www.cninfo.com.cn/new/data/szse_stock.json",
+                             headers={"User-Agent": UA}, timeout=15)
+            _CNINFO_ORGID_MAP = {s["code"]: s["orgId"]
+                                 for s in r.json().get("stockList", [])}
+        except Exception as e:
+            print(f"[WARN] 巨潮 orgId 映射表拉取失败，回退硬编码规则: {e}")
+    org = _CNINFO_ORGID_MAP.get(code)
+    if org:
+        return org
+    # fallback：老格式（仅部分老股票如 600519/600036 适用）
+    if code.startswith("6"):
+        return f"gssh0{code}"
+    elif code.startswith("8") or code.startswith("4"):
+        return f"gsbj0{code}"
+    return f"gssz0{code}"
+
 def cninfo_announcements(code: str, page_size: int = 30) -> list[dict]:
     """
     巨潮公告全文检索。
     返回: [{title, type, date, url}]
     """
     url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
-    # 构造 orgId（巨潮 2026 新格式）
-    if code.startswith("6"):
-        org_id = f"gssh0{code}"
-    elif code.startswith("8") or code.startswith("4"):
-        org_id = f"gsbj0{code}"
-    else:
-        org_id = f"gssz0{code}"
+    org_id = _cninfo_orgid(code)   # 动态查真实 orgId（#19 修复，自带硬编码 fallback）
 
     payload = {
         "stock": f"{code},{org_id}",
@@ -1666,7 +1906,7 @@ for a in anns[:10]:
 
 ```python
 from mootdx.quotes import Quotes
-client = Quotes.factory(market='std')
+client = tdx_client()  # 见 Prerequisites 的 tdx_client() helper（规避 0.11.x BESTIP bug；等价 Quotes.factory(market='std')）
 text = client.F10(symbol='688017', name='最新提示')
 # 包含最近的公告/分红/股东大会决议等摘要
 ```
@@ -1864,14 +2104,14 @@ print(f"PE={q['pe_ttm']} PB={q['pb']} 市值={q['mcap_yi']}亿")
 # 4. PEG校验
 
 # 5. 概念板块归属
-blocks = baidu_concept_blocks(code)
-print(f"概念: {', '.join(blocks['concept_tags'][:10])}")
+blocks = eastmoney_concept_blocks(code)
+print(f"板块: {', '.join(blocks['concept_tags'][:10])}")
 
-# 6. 资金流向（百度分钟级）
-flow = baidu_fund_flow_history(code)
+# 6. 资金流向（分钟级，当日盘中）
+flow = eastmoney_fund_flow_minute(code)
 if flow:
-    recent = flow[0]
-    print(f"最近主力净流入: {recent['mainIn']}万")
+    total = sum(f["main_net"] for f in flow)
+    print(f"当日主力累计净流入: {total/1e4:.0f}万")
 
 # 7. 资金流向（东财120日）
 flow_120 = stock_fund_flow_120d(code)
