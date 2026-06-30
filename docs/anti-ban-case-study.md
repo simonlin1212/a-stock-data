@@ -174,16 +174,31 @@ def em_get(url, params=None):
 
 ## 五、备用数据源适配器使用方法
 
+### V3.3.2 优化版（东财优先 + 智能限流 + 并发2）
+
 ```python
-# 当 push2/push2his 被封时，一键切换到备用数据源
+# 适配器V2: 东财优先, 带智能限流防封, 并发降到2
 import data_fallback
 import stock_screener
 
-# Monkey-patch: 替换所有东财API依赖
+# Monkey-patch: 替换所有东财API依赖 + step3并发降到2
 data_fallback.patch_module(stock_screener)
 
 # 正常运行选股脚本
 stock_screener.main()
+```
+
+适配器V2的核心改进：
+- **K线优先东财**：优先用 `push2his`（前复权，数据最准确），通过 `em_get()` 限流
+- **封禁自动检测**：连续3次 `RemoteDisconnected` → 标记封禁 → 后续K线自动走腾讯/新浪
+- **并发降到2**：`patch_module()` 自动替换 step3，`max_workers=10` → `max_workers=2`
+- **三级降级**：东财(限流2s) → 腾讯(前复权) → 新浪(不复权)
+
+### V3.3.1 原始版（纯备用源）
+
+```python
+# 适配器V1: 纯备用源, 不使用东财
+# 仅当东财确定被封时使用
 ```
 
 适配器会自动：
