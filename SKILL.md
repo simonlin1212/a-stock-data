@@ -1,18 +1,22 @@
 ---
 name: a-stock-data
-description: 当任务需要写代码实际获取A股数据时使用——拉取行情/K线(mootdx+腾讯+百度)、研报(东财+同花顺+iwencai)、信号(热点/北向/龙虎榜/解禁/行业)、资金面(融资融券/大宗/股东户数/分红/资金流)、新闻、财务三表/F10、公告(巨潮)、打板(涨停池/连板/炸板率)、ETF期权(T型报价/希腊字母/IV)、舆情互动(互动易/热榜/人气榜)等真实数据。十层数据源·43端点(含3官方备胎)·内嵌全部可运行代码，自包含零依赖外部文件；优先用通达信(mootdx)/腾讯(不封IP)，东财接口已内置限流防封，主源被封可查「备用源速查」降级。仅在需要调用数据接口取数时使用：A股概念解释、投资观点讨论、策略问答等无需取数的话题不要加载本skill。
+description: 当任务需要写代码实际获取A股数据时使用——拉取行情/K线(mootdx+腾讯+百度)、研报(东财+同花顺+iwencai)、信号(热点/北向/龙虎榜/解禁/行业)、资金面(融资融券/大宗/股东户数/分红/资金流)、新闻、财务三表/F10、公告(巨潮)、打板(涨停池/连板/炸板率)、ETF期权(T型报价/希腊字母/IV)、舆情互动(互动易/热榜/人气榜)等真实数据。十层数据源·44端点(含3官方备胎)·内嵌全部可运行代码，自包含零依赖外部文件；优先用通达信(mootdx)/腾讯(不封IP)，东财接口已内置限流防封，主源被封可查「备用源速查」降级。仅在需要调用数据接口取数时使用：A股概念解释、投资观点讨论、策略问答等无需取数的话题不要加载本skill。
 origin: custom
-version: 3.4.1
+version: 3.5.0
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V3.4.1
+# A股全栈数据工具包 V3.5.0
 
-十层数据架构，43 个端点实测可用（40 主端点 + 3 官方备胎，2026-07 验证），覆盖主板/中小板/科创板/ST。每类数据在「备用源速查」列有独立备胎，主源被封时可降级。
+十层数据架构，44 个端点实测可用（41 主端点 + 3 官方备胎，2026-07 验证），覆盖主板/中小板/科创板/ST。每类数据在「备用源速查」列有独立备胎，主源被封时可降级。
 
+> **V3.5.0（板块资金流向，2026-07-23 · #37）：**
+> - **§3.8 `board_fund_flow()` 板块资金流向新增**：补上此前缺失的**板块级资金流**——行业/概念/地域三类板块 × 今日/5日/10日三周期，主力净流入额/净占比 + 超大/大/中/小单四档明细 + 领涨股。与 §3.7 板块排名**同源同接口**（东财 push2 `clist`），此前只请求了价格/涨跌家数字段，本版补请求 `f62/f184/f66...` 资金流字段即覆盖。走 `em_get` 限流防封。端点 43 → 44。
+> - 实测（2026-07-23）：行业今日 100 个板块主力净额降序（电力设备 64.66亿 = 超大 43.55亿 + 大 21.11亿）、概念 5 日、地域 10 日均真实返回；参数校验拒绝非法 board_type/period。
+>
 > **V3.4.1（前缀路由 + mootdx 验活修复，2026-07-23）：**
 > - **§1.2/§市场前缀规则 前缀路由修复（#40 #41）**：`5` 开头沪市 ETF（`510300`/`588200` 等）、沪深指数（`000300`/`000016` 等）此前落到 `else → sz`，腾讯接口返回空**或错票**（`000016` 被误判为 `sz000016` *ST康佳A，静默返回不相干标的的数据，比返空更危险）。`get_prefix()` 与 `tencent_quote()` 两处同步修复：`5x→sh`、沪指数白名单、支持显式前缀（`sh000001`/`sz000001`）透传解决 `000001`（上证指数 vs 平安银行）歧义。
 > - **§1.1 `tdx_client()` 真实取数验活（#43）**：`_probe()` 仅做 TCP 握手，握手成功 ≠ 能取数——坏服务器可握手通过却回 2 字节空 body，导致**静默返回空 DataFrame 或连接崩溃**且走不到 fallback。新增 `_validate()`：每个候选 server 必须真实拉一根 K 线成功才采用，并对 `factory()` 连接异常做 try/except 跳过，全部失败才抛明确错误。
@@ -71,7 +75,8 @@ version: 3.4.1
 ├── 龙虎榜席位     → 上榜记录 + 买卖席位 TOP5 + 机构动向 (datacenter-web)
 ├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (datacenter-web)
 ├── 限售解禁日历   → 历史解禁 + 未来90天待解禁 (datacenter-web)
-└── 行业板块排名   → 东财行业涨跌/上涨下跌家数 (V3.0 替换同花顺)
+├── 行业板块排名   → 东财行业涨跌/上涨下跌家数 (V3.0 替换同花顺)
+└── 板块资金流向   → 行业/概念/地域 × 今日/5日/10日 主力+超大/大/中/小四档 (push2, V3.5)
 
 资金面 / 筹码层
 ├── 融资融券明细   → 日级融资余额/买入/偿还 + 融券 (datacenter-web)
@@ -134,7 +139,8 @@ ETF期权层 (V3.3 新增)
 | 3.5 | `dragon_tiger_board(code, date)` | 个股龙虎榜+买卖席位 TOP5 | 东财 |
 | 3.6 | `lockup_expiry(code, date)` | 解禁历史+未来90天待解禁 | 东财 |
 | 3.7 | `industry_comparison()` | 行业板块涨跌排名 | 东财 |
-| 3.8 | `daily_dragon_tiger(date)` | 全市场龙虎榜+净买额排名 | 东财 |
+| 3.8 | `board_fund_flow(board_type, period)` | 板块资金流向（行业/概念/地域 × 今日/5日/10日，主力+四档） | 东财 |
+| 3.9 | `daily_dragon_tiger(date)` | 全市场龙虎榜+净买额排名 | 东财 |
 | 4.1 | `margin_trading(code)` | 融资融券明细 | 东财 |
 | 4.2 | `block_trade(code)` | 大宗交易+营业部 | 东财 |
 | 4.3 | `holder_num_change(code)` | 股东户数变化 | 东财 |
@@ -1388,7 +1394,92 @@ for r in data["bottom"][-5:]:
     print(f"  {r['rank']}. {r['name']}: {r['change_pct']}%")
 ```
 
-### 3.8 全市场龙虎榜
+### 3.8 板块资金流向（行业/概念/地域 × 今日/5日/10日）
+
+东财板块资金流向——主力净流入额/净占比 + 超大/大/中/小单四档，覆盖行业、概念、地域三类板块，今日/5日/10日三个周期。与 §3.7 板块排名**同源同接口**（push2 `clist`），只是补请求了资金流字段（`f62/f184/f66...`）。走 `em_get` 限流防封。
+
+```python
+import requests
+
+# 板块类型 → 东财 fs 参数
+_BOARD_FS = {"industry": "m:90+t:2", "concept": "m:90+t:3", "region": "m:90+t:1"}
+# 周期 → (排序fid, 主力净额, 主力净占比, 涨跌幅, 领涨股name)；四档明细仅今日
+_BOARD_PERIOD = {
+    "today": ("f62",  "f62",  "f184", "f3",   "f204"),
+    "5d":    ("f164", "f164", "f165", "f109", "f257"),
+    "10d":   ("f174", "f174", "f175", "f160", None),   # 10日领涨股名称字段不稳定，省略
+}
+
+def board_fund_flow(board_type: str = "industry", period: str = "today",
+                    top_n: int = 20) -> dict:
+    """
+    板块资金流向排名（按主力净流入降序）。
+    board_type: industry(行业) / concept(概念) / region(地域)
+    period:     today(今日) / 5d(5日) / 10d(10日)
+    返回: {board_type, period, total, rows:[{rank, name, code, change_pct,
+           main_net(主力净额,元), main_pct(主力净占比,%), leader(领涨股),
+           # 仅 today：super_large_net/large_net/medium_net/small_net(超大/大/中/小单净额,元)}]}
+    注：板块级只有 今日/5日/10日（无 3日，个股级才有）。主力净额 = 超大单 + 大单。
+    """
+    if board_type not in _BOARD_FS:
+        raise ValueError(f"board_type 须为 {list(_BOARD_FS)}")
+    if period not in _BOARD_PERIOD:
+        raise ValueError(f"period 须为 {list(_BOARD_PERIOD)}")
+    fid, f_main, f_pct, f_chg, f_leader = _BOARD_PERIOD[period]
+
+    fields = ["f12", "f14", f_chg, f_main, f_pct]
+    if f_leader:
+        fields.append(f_leader)
+    if period == "today":
+        fields += ["f66", "f72", "f78", "f84"]   # 超大/大/中/小单净额
+
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "pn": "1", "pz": "200", "po": "1", "np": "1",
+        "fltt": "2", "invt": "2", "fid": fid,       # fid + po=1：按该周期主力净额降序
+        "fs": _BOARD_FS[board_type],
+        "fields": ",".join(dict.fromkeys(fields)),  # 去重保序
+    }
+    r = em_get(url, params=params, headers={"User-Agent": UA}, timeout=15)
+    items = r.json().get("data", {}).get("diff", []) or []   # 注：API 的 total 字段不可信，用 len(items)
+
+    rows = []
+    for i, it in enumerate(items):
+        row = {
+            "rank": i + 1,
+            "name": it.get("f14", ""),
+            "code": it.get("f12", ""),
+            "change_pct": it.get(f_chg, 0),
+            "main_net": it.get(f_main, 0),          # 主力净流入净额（元）
+            "main_pct": it.get(f_pct, 0),           # 主力净流入净占比（%）
+            "leader": it.get(f_leader, "") if f_leader else "",
+        }
+        if period == "today":
+            row.update({
+                "super_large_net": it.get("f66", 0),
+                "large_net":       it.get("f72", 0),
+                "medium_net":      it.get("f78", 0),
+                "small_net":       it.get("f84", 0),
+            })
+        rows.append(row)
+
+    return {"board_type": board_type, "period": period,
+            "total": len(rows), "rows": rows[:top_n]}
+
+# 用法
+d = board_fund_flow("industry", "today", 10)
+print(f"行业板块今日主力净流入 TOP{len(d['rows'])}（共 {d['total']} 个）:")
+for r in d["rows"]:
+    print(f"  {r['rank']}. {r['name']}: 主力 {r['main_net']/1e8:.2f}亿 ({r['main_pct']}%) "
+          f"涨跌{r['change_pct']}% 超大{r['super_large_net']/1e8:.2f}亿 领涨{r['leader']}")
+
+# 概念板块 5 日资金流
+concept_5d = board_fund_flow("concept", "5d", 10)
+# 地域板块 10 日资金流
+region_10d = board_fund_flow("region", "10d", 10)
+```
+
+### 3.9 全市场龙虎榜
 
 每日全市场龙虎榜汇总——当日所有触发龙虎榜的股票 + 上榜原因 + 买卖净额 + 换手率。
 
@@ -1446,7 +1537,7 @@ data = daily_dragon_tiger("2026-05-16", min_net_buy=5000)
 print(f"\n净买入 > 5000万: {data['total_records']} 条")
 ```
 
-### 3.9 信号层组合用法：题材热度 + 资金验证
+### 3.10 信号层组合用法：题材热度 + 资金验证
 
 ```python
 # 拉当日强势股 reason
