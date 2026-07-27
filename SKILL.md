@@ -162,7 +162,7 @@ ETF期权层 (V3.3 新增)
 | 10.1 | `cninfo_irm(code)` | 互动易问答（提问+公司回复） | 巨潮 |
 | 10.2 | `ths_hot_list()` / `em_hot_rank()` / `em_hot_concept(code)` | 热榜/人气榜/概念命中 | 同花顺+东财 |
 | 备用源速查 | `dragon_tiger_backup` / `fund_flow_backup` / `announcements_backup` | 龙虎榜/资金流/公告官方备胎（主源被封时降级） | 交易所官方+新浪+东财(沪市公告) |
-| 估值公式 | `forward_pe` / `pe_digestion` / `calc_peg` / `full_valuation(code)` | 前向PE / PE消化时间 / PEG / 单票估值全景 | 本地计算 |
+| 估值公式 | `forward_pe` / `pe_digestion` / `calc_peg` / `pb_breakdown` / `earnings_yield` / `peg_check` / `fair_price` / `fair_pb` / `full_valuation(code)` | 前向PE / PE消化 / PEG / PB拆解 / 盈利收益率 / PEG校验 / 合理股价 / 合理PB价 / 单票估值全景 | 本地计算 |
 
 ## 数据源优先级 & 东财防封（重要，先读）
 
@@ -2635,31 +2635,48 @@ def calc_peg(pe: float, cagr: float) -> float:
 期权定价例外: PEG > 3 但壁垒极深时，本质是看涨期权，不适用PEG框架。
 ```
 
-### 估值分析的铁律：每一步都要过计算
+### 估值分析铁律
 
-从原始数据（PE/PB/EPS）到描述性结论（"便宜""贵"）的过程中，最容易犯的错误不是算错，而是**根本没算——在数字和结论之间凭感觉硬编了一句"生动解释"**。
+**结论必须通过数字计算得出，不能凭感觉编造。** 每句估值描述（"便宜""贵""花X元买Y元资产"）都必须能从原始数字（PE/PB/EPS）直接算出来。用下面的函数算，不要自己编：
 
-**强制规则**：任何从估值数字推导出的解释性描述，必须从原始数字反推验证。
+```python
+def pb_breakdown(pb: float) -> str:
+    """PB → 每花1元买到的净资产"""
+    if pb <= 0:
+        return "PB无效"
+    book_per_yuan = 1 / pb
+    return f"PB={pb}，每花1元买到{book_per_yuan:.2f}元净资产"
 
-**常见陷阱示例：**
 
-| 原始数据 | 错误写法（编的） | 为什么错 | 正确写法（算过的） |
-|----------|-----------------|---------|-------------------|
-| PB = 2.61 | "花1块钱买到1.5毛的净资产，便宜" | PB>1 不可能是折价买入；`1/2.61=0.38`≠0.15 | "花2.61元买到1元净资产，即每花1元买到约0.38元净资产" |
-| PE = 8 | "8倍PE极其便宜" | 8倍PE是否便宜取决于增速和行业，不能只看绝对数 | "前向PE 8倍，对比A股成长股30x锚点偏低，但需结合CAGR验证PEG" |
-| PB从10跌到3 | "PB跌了70%所以PB=0.3" | 混淆了"跌幅"和"绝对值" | "PB从10跌到3，降幅70%，但PB本身等于3（即花3元买1元净资产）" |
+def earnings_yield(pe: float) -> float:
+    """PE → 盈利收益率（%）"""
+    if pe <= 0:
+        return 0.0
+    return (1 / pe) * 100
 
-**自查流程：**
 
+def peg_check(pe: float, cagr: float) -> str:
+    """PEG 校验，返回结论（禁止手写"便宜/贵"）"""
+    if cagr <= 0:
+        return "增速为负，PEG无意义"
+    peg = pe / (cagr * 100)
+    if peg < 1:
+        return f"PEG={peg:.2f} < 1，低估"
+    elif peg <= 1.5:
+        return f"PEG={peg:.2f}，合理"
+    else:
+        return f"PEG={peg:.2f} > 1.5，高估"
+
+
+def fair_price(eps_forecast: float, target_pe: float = 30) -> float:
+    """一致预期EPS × 合理PE锚点 → 合理股价"""
+    return eps_forecast * target_pe
+
+
+def fair_pb(bps: float, historical_median_pb: float) -> float:
+    """每股净资产 × 历史中位数PB → 合理PB估值价"""
+    return bps * historical_median_pb
 ```
-从数字到结论的每一步，做反向验算：
-
-1. 有一个结论（"便宜"）→ 用原始数字重新算一遍（1/PB = ?）
-2. 有一个百分比（"跌了X%"）→ 确认X指的是幅度还是绝对值
-3. 有一个类比（"花A元买到B元资产"）→ A × B 和原始数字矛盾吗？
-```
-
-**核心原则：不要让"寻找便宜信号"的动机篡改算术。** 如果原始数字推导不出一个便宜的结论，就不要硬编便宜的叙事。真实数字比漂亮叙事重要。
 
 ---
 
