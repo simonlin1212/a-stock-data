@@ -3,7 +3,7 @@
 <h1 align="center">a-stock-data</h1>
 
 <p align="center">
-  <b>A 股全栈数据工具包 — 11 层架构 · 54 个端点 · 19 个数据源 · 零鉴权</b>
+  <b>A 股全栈数据工具包 — 11 层架构 · 55 个端点 · 20 个数据源 · 2 个可选鉴权源</b>
 </p>
 
 <p align="center">
@@ -12,21 +12,21 @@
   <a href="https://github.com/simonlin1212/a-stock-data/stargazers"><img src="https://img.shields.io/github/stars/simonlin1212/a-stock-data?style=social" alt="Stars"></a>
   <br>
   <img src="https://img.shields.io/badge/layers-11-2ea44f.svg" alt="Layers">
-  <img src="https://img.shields.io/badge/endpoints-54-2ea44f.svg" alt="Endpoints">
-  <img src="https://img.shields.io/badge/sources-19-2ea44f.svg" alt="Sources">
-  <img src="https://img.shields.io/badge/auth-zero-success.svg" alt="Zero Auth">
+  <img src="https://img.shields.io/badge/endpoints-55-2ea44f.svg" alt="Endpoints">
+  <img src="https://img.shields.io/badge/sources-20-2ea44f.svg" alt="Sources">
+  <img src="https://img.shields.io/badge/auth-2_optional_sources-blue.svg" alt="2 optional authenticated sources">
 </p>
 
 <p align="center">
   <a href="#架构">架构</a> ·
   <a href="#快速开始">快速开始</a> ·
-  <a href="#54-个端点能力清单">端点清单</a> ·
+  <a href="#55-个端点能力清单">端点清单</a> ·
   <a href="#使用示例">使用示例</a> ·
   <a href="#faq">FAQ</a> ·
   <a href="./CHANGELOG.md">更新日志</a>
 </p>
 
-一个自包含的 Skill 文件，把分散在 19 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。主源被封还有「备用源速查」可降级。
+一个自包含的 Skill 文件，把分散在 20 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头或接口鉴权细节。主源被封还有「备用源速查」可降级。
 
 > 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
 >
@@ -53,7 +53,8 @@ A 股全栈数据 · 十一层架构 · V3.7.1
 ├── 打板层    东财 push2ex + 同花顺          涨停池 / 炸板 / 跌停 / 昨涨停 / 涨停原因题材 / 连板梯队
 │                                           + 重点监控池 + 日内异动池  ★V3.6
 ├── 期权层    新浪 hq.sinajs                ETF期权 T型报价 / 希腊字母 / 隐含波动率 IV  ★V3.3
-├── 舆情互动  巨潮互动易 + 同花顺 + 东财     互动易问答 / 同花顺热榜 / 东财人气榜 / 概念命中  ★V3.3
+├── 舆情互动  巨潮互动易 + 同花顺 + 东财     互动易问答 / 热榜 / 人气榜 / 概念命中  ★V3.3
+│           + Xquik（可选）                 X 公开帖子原文 / 作者 / 时间 / 互动量
 └── 宏观层    人民银行 + 国家统计局          社会融资规模增量(月度12列) / PMI(制造业·非制造业·综合·大中小型)  ★V3.7
 ```
 
@@ -83,9 +84,9 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 
 ---
 
-## 54 个端点能力清单
+## 55 个端点能力清单
 
-> **计数口径：** 下方清单共 55 行，按端点计 54 个——「东财 行业研报」与「东财 reportapi」为**同一端点**（仅 `qType` 参数不同）、「同花顺北向（历史）」为本地自缓存（非独立端点），两行不计入；「东财日内异动池」一行含 `list` / `count` **两个端点**，多计 1 个。55 − 1 − 1 + 1 = 54。
+> **计数口径：** 下方清单共 56 行，按端点计 55 个——「东财 行业研报」与「东财 reportapi」为**同一端点**（仅 `qType` 参数不同）、「同花顺北向（历史）」为本地自缓存（非独立端点），两行不计入；「东财日内异动池」一行含 `list` / `count` **两个端点**，多计 1 个。56 − 1 − 1 + 1 = 55。
 
 ### 行情层（实时，不封 IP）
 
@@ -181,6 +182,7 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | 同花顺热榜 | 人气值 / 概念标签 / 排名变化 |
 | 东财人气榜 | 排名 + 排名变化 + 名称价格 |
 | 东财个股概念命中 | 这只票当下被市场归到哪些概念在炒 + 热度值 |
+| **X 公开帖子搜索** | 帖子原文 + 作者 + 发布时间 + 互动量（Xquik，可选 API Key，只读且单次 ≤100 条） |
 
 ### 宏观层（V3.7 新增）
 
@@ -201,7 +203,9 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 
 ### 鉴权要求
 
-除 iwencai 外，其余所有数据源**完全免费无 Key**（含 V3.7 新增的 baostock / 申万 / 人民银行 / 国家统计局，均零注册）。仅 iwencai 语义搜索需要 API Key（[申请地址](https://www.iwencai.com/skillhub)）。
+iwencai 语义搜索与可选的 Xquik 公开帖子搜索需要 API Key。其余 18 个数据源无需 Key。Xquik 端点只做有界公开读取，不发布内容、不创建监控、不启动批量任务。配置方法见 SKILL.md。
+
+> Xquik 是独立第三方服务，与 X Corp. 无关联。“Twitter”和“X”是 X Corp. 的商标。
 
 ---
 
@@ -235,6 +239,7 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | **ETF 期权** | 「50ETF 平值期权的隐含波动率和 Delta 是多少」 |
 | **互动易** | 「比亚迪最近投资者都在问什么，公司怎么回应的」 |
 | **市场热度** | 「今天哪些票最热门，被归到什么概念在炒」 |
+| **X 公开讨论** | 「查近 7 天 X 上关于贵州茅台或 600519 的公开帖子」 |
 | 新闻公告 | 「拉一下 300476 最近的新闻和公告」 |
 | **市场快讯** | 「用财联社电报看看现在市场上有什么大新闻」 |
 | 批量对比 | 「帮我对比这 5 只半导体股的估值」 |
@@ -292,11 +297,12 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | 10 | **申万研究** | HTTP | 低（公开 XLS） | 行业分类变迁史 |
 | 11 | **人民银行** | HTTP | 低（官方站） | 社会融资规模增量 |
 | 12 | **国家统计局** | HTTP | 低（官方站） | PMI |
+| 可选 | **Xquik** | HTTP | 需 Key；单次 ≤100 条 | X 公开帖子原文 / 作者 / 时间 / 互动量 |
 | **末位（仅独有数据）** | **东财** datacenter/push2/reportapi/search/np-weblist | HTTP | **中 — 有风控会封 IP** | 龙虎榜/解禁/两融/大宗/股东户数/分红/资金流/研报/个股新闻/全球资讯（已统一走 `em_get()` 限流） |
 
 > **架构原则：** 除 mootdx 与 baostock（均为 TCP 客户端库）外，全部直连 HTTP API，不经第三方数据封装。**东财系接口有访问频率风控，所有调用统一经 `em_get()` 串行限流防封；批量任务请调大 `EM_MIN_INTERVAL`。**
 >
-> **降级原则（V3.4 新增）：** 任一主源被封/失效时，查 SKILL.md「备用源速查 & 降级策略」——每类数据都备有一条**不同域名、不同风控面**的独立备胎（沪深交易所官方 / 新浪 / 同花顺 / HKEX），东财被封时它们不受牵连。
+> **降级原则（V3.4 新增）：** 任一主源被封/失效时，查 SKILL.md「备用源速查 & 降级策略」。核心数据使用不同域名、不同风控面的独立备胎。舆情层可选 Xquik 作为独立公开讨论源，但它不替代互动易正式回复或榜单排名。
 
 ---
 
