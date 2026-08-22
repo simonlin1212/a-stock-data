@@ -3,7 +3,7 @@
 <h1 align="center">a-stock-data</h1>
 
 <p align="center">
-  <b>Full-stack data toolkit for China A-shares — 11 layers · 54 endpoints · 19 sources · zero-auth</b>
+  <b>Full-stack data toolkit for China A-shares — 11 layers · 55 endpoints · 20 sources · 2 optional auth sources</b>
 </p>
 
 <p align="center">
@@ -12,21 +12,21 @@
   <a href="https://github.com/simonlin1212/a-stock-data/stargazers"><img src="https://img.shields.io/github/stars/simonlin1212/a-stock-data?style=social" alt="Stars"></a>
   <br>
   <img src="https://img.shields.io/badge/layers-11-2ea44f.svg" alt="Layers">
-  <img src="https://img.shields.io/badge/endpoints-54-2ea44f.svg" alt="Endpoints">
-  <img src="https://img.shields.io/badge/sources-19-2ea44f.svg" alt="Sources">
-  <img src="https://img.shields.io/badge/auth-zero-success.svg" alt="Zero Auth">
+  <img src="https://img.shields.io/badge/endpoints-55-2ea44f.svg" alt="Endpoints">
+  <img src="https://img.shields.io/badge/sources-20-2ea44f.svg" alt="Sources">
+  <img src="https://img.shields.io/badge/auth-2_optional_sources-blue.svg" alt="2 optional authenticated sources">
 </p>
 
 <p align="center">
   <a href="#architecture">Architecture</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#54-endpoints">Endpoints</a> ·
+  <a href="#55-endpoints">Endpoints</a> ·
   <a href="./CHANGELOG.md">Changelog</a>
 </p>
 
-Full-stack data toolkit for China A-Share market — 11-layer architecture · 54 endpoints (51 primary + 3 official backups) · 19 data sources · direct HTTP calls except two TCP client libraries (mootdx / baostock)
+Full-stack data toolkit for China A-Share market — 11-layer architecture · 55 endpoints (52 primary + 3 official backups) · 20 data sources · direct HTTP calls except two TCP client libraries (mootdx / baostock)
 
-A self-contained Skill file that consolidates raw A-share data from 19 sources into a ready-to-use toolkit for AI coding assistants. No need to memorize mootdx candlestick parameters, Eastmoney PDF Referer headers, or iwencai X-Claw authentication — it's all handled. And when a primary source bans you, there's a backup-source quick reference to fall back on.
+A self-contained Skill file that consolidates raw A-share data from 20 sources into a ready-to-use toolkit for AI coding assistants. It handles source parameters, required headers, and optional authentication. When a primary source bans you, use the backup-source quick reference.
 
 > Compatible with [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
 >
@@ -54,6 +54,7 @@ China A-Share Full-Stack Data · 11-Layer Architecture · V3.7.1
 │                                                     + Watch list pool + Intraday price-anomaly pool  ★V3.6
 ├── Options        Sina hq.sinajs                     ETF option T-quotes / Greeks / implied volatility  ★V3.3
 ├── Sentiment      cninfo IRM + THS + Eastmoney       Investor Q&A / hot lists / popularity rank / concept hits  ★V3.3
+│               + Xquik (optional)                Public X post text / author / time / engagement
 └── Macro          PBoC + NBS                     Social financing (monthly, 12 cols) / PMI (mfg · non-mfg · composite · by size)  ★V3.7
 ```
 
@@ -83,9 +84,9 @@ Launch Claude Code and say "Check the valuation of 688017" — the skill activat
 
 ---
 
-## 54 Endpoints
+## 55 Endpoints
 
-> **Counting convention:** the tables below have 55 rows but count as 54 endpoints — "Eastmoney Industry Reports" shares **the same endpoint** as "Eastmoney reportapi" (only the `qType` parameter differs) and "THS Northbound (historical)" is a local self-built cache (not a separate endpoint), so neither is counted; the single "EM Intraday Anomaly Pool" row covers **two** endpoints (`list` / `count`), adding one back. 55 − 1 − 1 + 1 = 54.
+> **Counting convention:** the tables below have 56 rows but count as 55 endpoints. "Eastmoney Industry Reports" shares the same endpoint as "Eastmoney reportapi". "THS Northbound (historical)" is a local cache. Neither is counted separately. The "EM Intraday Anomaly Pool" row covers 2 endpoints (`list` and `count`), adding one back. 56 − 1 − 1 + 1 = 55.
 
 ### Market Data (real-time, no IP ban)
 
@@ -181,6 +182,7 @@ Launch Claude Code and say "Check the valuation of 688017" — the skill activat
 | THS Hot List | Popularity / concept tags / rank change |
 | EM Popularity Rank | Rank + rank change + name/price |
 | EM Stock Concept Hits | Which concepts the market is grouping this stock under + heat |
+| **Public X Post Search** | Post text + author + timestamp + engagement (Xquik, optional API key, read-only, ≤100 rows) |
 
 ### Macro (V3.7 new)
 
@@ -201,7 +203,9 @@ Launch Claude Code and say "Check the valuation of 688017" — the skill activat
 
 ### Authentication
 
-All data sources except iwencai are **completely free, no API key needed** (including the V3.7 additions — baostock / SW Research / PBoC / NBS — all zero-registration). Only iwencai semantic search requires an API key ([apply here](https://www.iwencai.com/skillhub)).
+iwencai semantic search and the optional Xquik public post search require API keys. The other 18 sources need no key. The Xquik endpoint performs bounded public reads only. It does not publish content, create monitors, or start bulk jobs. See SKILL.md for setup.
+
+> Xquik is an independent third-party service. Not affiliated with X Corp. "Twitter" and "X" are trademarks of X Corp.
 
 ---
 
@@ -234,6 +238,7 @@ Just tell your AI assistant:
 | ETF Options | "What's the implied vol and Delta of the at-the-money 50ETF option" |
 | Investor Q&A | "What are investors asking BYD recently and how did the company respond" |
 | Market Heat | "Which stocks are hottest today and what concepts are they grouped under" |
+| **Public X Discussion** | "Find public X posts from the last 7 days about Kweichow Moutai or 600519" |
 | News & Filings | "Pull recent news and filings for 300476" |
 | Market Flash | "Any big market news right now on the CLS flash feed" |
 | Batch Compare | "Compare valuations of these 5 semiconductor stocks" |
@@ -292,11 +297,12 @@ Just tell your AI assistant:
 | 10 | **SW Research** | HTTP | Low (public XLS) | Industry classification history |
 | 11 | **PBoC** | HTTP | Low (official site) | Aggregate social financing |
 | 12 | **NBS** | HTTP | Low (official site) | PMI |
+| optional | **Xquik** | HTTP | Key required; ≤100 rows | Public X post text / author / time / engagement |
 | **last (exclusive only)** | **Eastmoney** datacenter/push2/reportapi/search/np-weblist | HTTP | **Medium — has rate-limit risk** | Dragon-tiger / lockup / margin / block trade / shareholders / dividends / fund flow / reports / news (all via `em_get()`) |
 
 > **Architecture:** Except mootdx and baostock (both TCP client libraries), all sources use direct HTTP API calls with no third-party data wrapper in between. **Eastmoney APIs are rate-limited; all calls go through `em_get()` for serial throttling. For batch jobs, increase `EM_MIN_INTERVAL`.**
 >
-> **Fallback (V3.4 new):** When any primary source is banned or broken, check the "Backup Sources & Fallback Strategy" section in SKILL.md — every data category has an independent backup on a **different domain and rate-limit plane** (SSE/SZSE official / Sina / THS / HKEX), unaffected when Eastmoney bans you.
+> **Fallback (V3.4 new):** When a primary source is banned or broken, check the "Backup Sources & Fallback Strategy" section in SKILL.md. Core data uses independent domains and rate-limit planes. The sentiment layer can use Xquik as a separate public-discussion source, but it does not replace official IRM answers or popularity rankings.
 
 ---
 
