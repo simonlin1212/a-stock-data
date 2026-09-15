@@ -1,5 +1,31 @@
 # Changelog
 
+## v3.8.1 — 2026-09-15（待发）
+
+### 修复（#52 / #48 / #43 延续）
+
+- **`tdx_client()` 新增 easy_tdx 回退分支**：2026-09 起通达信服务端不再接受
+  tdxpy 0.2.x 的行情类命令——`bars()`/`quotes()`/`transaction()` 在全部
+  _TDX_SERVERS 上静默返回空壳（TCP 可达、stocks/xdxr/finance 正常），
+  原「换 IP 列表」与「真实取数验活」均无法规避（#52 报告 10/10 可达但 0/10 验活）。
+  现 mootdx 全池验活失败时回退 **easy_tdx**（同协议新实现，clong365/easy_tdx，
+  日常维护中），经一根 K 线验活后返回 `_TdxCompatClient` 适配器：
+  `bars()` 走 easy_tdx（frequency 0-11 全映射），其余方法透传仍可用的 mootdx 客户端，
+  既有调用零改动。未安装 easy_tdx 时行为与旧版一致（抛 RuntimeError，报错信息
+  附安装命令）。
+- 实测（2026-09-15，中国大陆家宽）：茅台 3 年 1105 行、创业板 300902/科创 688981
+  正常、~88ms/只（3 年 K 线）、多连接并发可用；周线/月线粒度正确。
+- 依赖表新增 `easy_tdx`（可选，pip 未发布，git 安装）；「数据源优先级」表 mootdx
+  可靠性标注更新（行情类命令失效，K 线回退路径），避免后续使用者在 mootdx 上空转排查。
+- 备注：实时行情 `quotes()`/`transaction()` 在 easy_tdx 回退态下 mootdx 侧仍为空，
+  实时价请走腾讯 `tencent_quote()`（§1.2，本就不封 IP）。
+
+### Breaking Changes
+
+无。`tdx_client()` 签名不变；新增依赖为可选（未装时走旧路径）。
+
+---
+
 ## v3.8.0 — 2026-09-05
 
 新增 **1 层、6 个能力入口、3 个官方来源**：十二层、60 个入口（55 主入口 + 5 备胎）、

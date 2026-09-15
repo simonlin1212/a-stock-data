@@ -335,6 +335,7 @@ pip install mootdx requests pandas stockstats numpy baostock xlrd openpyxl
 | 依赖 | 版本要求 | 用途 |
 |------|---------|------|
 | mootdx | >= 0.10 | TCP行情+财务+F10（非 HTTP 依赖之一）；0.11.x 用 `tdx_client()` 规避 BESTIP bug，见上节 |
+| easy_tdx | 可选（pip 未发布，`pip install "easy_tdx @ git+https://github.com/clong365/easy_tdx.git"`） | mootdx 行情类命令失效时的回退源（#52，2026-09 起通达信服务端不再接受 tdxpy 0.2.x 的 bars/quotes/transaction）；未装时 `tdx_client()` 行为不变 |
 | requests | any | 所有HTTP API直连 |
 | pandas | any | 数据处理+HTML表格解析 |
 | stockstats | any | 技术指标计算（RSI/MACD/BOLL等） |
@@ -407,13 +408,17 @@ def tdx_client(market='std'):
       1) 顺序探测 _TDX_SERVERS，对 probe 通过者再 _validate 真实取数，取第一个验活成功的；
       2) 全部失败 → 回退 mootdx 自带 bestip 测速选优（同样验活）；
       3) 再回退裸 factory（老用户 config 已有可用 BESTIP 时成立）；
-      4) 仍失败 → 抛 RuntimeError，明确报错而非静默返回空表 / 崩溃。
+      4) 仍失败 → 回退 easy_tdx（同协议新实现，#52：mootdx 行情类命令 2026-09 起
+         全池静默空，但 easy_tdx 1.1.0 实测可取数；未安装时静默跳过）；
+      5) 仍失败 → 抛 RuntimeError，明确报错而非静默返回空表 / 崩溃。
     """
+    last_c = None
     for ip, port in _TDX_SERVERS:
         if not _probe(ip, port):
             continue
         try:
             c = Quotes.factory(market=market, server=(ip, port))
+            last_c = c
             if _validate(c, market):
                 return c
         except Exception:
@@ -421,14 +426,67 @@ def tdx_client(market='std'):
     for kwargs in ({'bestip': True}, {}):                   # fallback: bestip 测速 / 裸 factory
         try:
             c = Quotes.factory(market=market, **kwargs)
+            last_c = c
             if _validate(c, market):
                 return c
         except Exception:
             continue
+    # #52: mootdx 全池验活失败。2026-09 起通达信服务端不再接受 tdxpy 0.2.x 的
+    # 行情类命令（bars/quotes/transaction 静默回空壳），但 TCP 连接与
+    # stocks/xdxr/finance 等非行情命令仍正常，换 IP 无解。回退 easy_tdx
+    # （同协议、日常维护，2026-09-15 湖南家宽实测：茅台 3 年 1105 行、创业板正常、
+    # ~88ms/只、多连接并发可用）。未装 easy_tdx 时静默跳过，行为与旧版一致。
+    try:
+        from easy_tdx import MacClient
+        mac = MacClient.from_best_host()
+        probe_df = mac.get_stock_kline(0, '000001', count=1)
+        if probe_df is not None and not probe_df.empty:
+            return _TdxCompatClient(mac, last_c)
+    except Exception:
+        pass
     raise RuntimeError(
         "所有 mootdx 服务器均无法取到数据（TCP 可达但返回空 / 被 reset）。"
+        "若为 2026-09 起的行情类命令全空（#52），安装 easy_tdx 后重试："
+        "pip install 'easy_tdx @ git+https://github.com/clong365/easy_tdx.git'。"
         "海外网络通常全部超时（TCP 7709），请走国内代理或更新 _TDX_SERVERS 列表。"
     )
+
+
+class _TdxCompatClient:
+    """easy_tdx 回退态的兼容适配器（#52）。
+
+    `bars()` 走 easy_tdx（mootdx 行情类命令已失效）；其余方法（stocks/xdxr/
+    finance/F10 等仍可用的非行情命令）透传给最后一个建连成功的 mootdx 客户端，
+    SKILL.md 既有调用不变。quotes()/transaction() 同受 #52 影响，透传 mootdx
+    会返回空——实时行情请改用 §备用源速查（腾讯 tencent_quote）。
+    """
+    _FREQ_TO_PERIOD = {0: 'MIN_5', 1: 'MIN_15', 2: 'MIN_30', 3: 'MIN_60',
+                       4: 'DAILY', 5: 'WEEKLY', 6: 'MONTHLY', 7: 'MIN_1',
+                       9: 'DAILY', 10: 'QUARTERLY', 11: 'YEARLY'}
+
+    def __init__(self, mac, mootdx_client):
+        self._mac = mac
+        self._mootdx = mootdx_client
+
+    def bars(self, symbol='000001', frequency=9, start=0, offset=800, **kwargs):
+        import pandas as pd
+        from easy_tdx import Period
+        period = getattr(Period, self._FREQ_TO_PERIOD.get(int(frequency), 'DAILY'), Period.DAILY)
+        market = 1 if str(symbol).startswith(('5', '6', '9')) else 0
+        df = self._mac.get_stock_kline(market, str(symbol), period=period,
+                                       start=int(start), count=int(offset))
+        if df is None or df.empty:
+            return pd.DataFrame()
+        cols = [c for c in ('datetime', 'open', 'high', 'low', 'close', 'vol', 'amount')
+                if c in df.columns]
+        out = df[cols].reset_index(drop=True)
+        out['datetime'] = pd.to_datetime(out['datetime'])
+        return out
+
+    def __getattr__(self, name):
+        if self._mootdx is None:
+            raise AttributeError(f"mootdx 不可用且 easy_tdx 回退态不提供 {name}()（#52）")
+        return getattr(self._mootdx, name)
 
 # 用法：client = tdx_client()   # 替代所有 Quotes.factory(market='std')
 ```
@@ -4350,7 +4408,7 @@ bj_quote = bse_quote_backup("2026-09-04", code="920021")
 
 | 优先级 | 数据源 | 用途 | 可靠性 | 封IP风险 |
 |--------|--------|------|--------|---------|
-| 1 | **mootdx** (TCP) | K线+五档盘口+逐笔成交+财务快照+F10 | 极稳定 | 极低 |
+| 1 | **mootdx** (TCP) | K线+五档盘口+逐笔成交+财务快照+F10 | ⚠️ 行情类命令(bars/quotes/transaction) 2026-09 起全线静默空(#52)，财务/除权/F10 仍可用；K线回退见 `tdx_client()` easy_tdx 分支或腾讯 fqkline | 极低 |
 | 2 | **腾讯财经** (HTTP) | 实时PE/PB/市值/换手率/涨跌停/指数/ETF | 稳定 | 低 |
 | 3 | **东财 datacenter** (HTTP) | 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红/个股信息 | 稳定 | 低 |
 | 4 | **东财 push2/push2his** (HTTP) | 行业板块/个股资金流分钟级+120日 | 稳定 | 低 |
