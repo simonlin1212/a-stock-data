@@ -48,23 +48,28 @@ A self-contained Skill file that consolidates raw A-share and related market dat
 
 ## Data Coverage (15 categories)
 
-| # | Category | Data | Main sources |
-|---|----------|------|--------------|
-| 1 | Quotes / K-lines | Live price, PE/PB/market cap/turnover, daily/weekly/monthly forward- and back-adjusted and 1–60-minute K-lines, full-market daily bars for a trading day (with turnover value), adjust factors, index / ETF | Tencent, TDX official site, Baidu, Sina |
-| 2 | Research | Stock / industry reports and PDFs, ratings, 3-year EPS forecasts, consensus EPS, natural-language search, report lists | Eastmoney, Sina, THS, iwencai |
-| 3 | Market signals | Hot stocks and themes, northbound flow, sector membership, fund flow, dragon-tiger board, lockup expiries, industry ranking, board fund flow | THS, Eastmoney |
-| 4 | Capital flow / chips | Margin trading, block trades, shareholder count, dividends, 120-day fund flow, chip distribution, ETF shares | Eastmoney, SSE, SZSE, computed locally |
-| 5 | News | Stock news, CLS flash, 7×24 live news, CCTV evening news transcripts | Eastmoney, CLS, Wallstreetcn, CCTV |
-| 6 | Fundamentals | Quarterly snapshot, F10, financial statements, valuation history, listing/delisting dates, SW industry history, ST list | TDX (mootdx), Sina, baostock, SW, Eastmoney |
-| 7 | Filings | Full filings across SSE / SZSE / BSE | cninfo |
-| 8 | Limit-up | Limit-up / break / limit-down / previous-day pools, limit-up reasons, watch list, intraday anomalies | Eastmoney, THS |
-| 9 | ETF options | T-quotes, Greeks, implied volatility | Sina |
-| 10 | Sentiment | cninfo IRM (Shenzhen), SSE e-Interaction (Shanghai), THS hot list, Eastmoney popularity rank, concept hits | cninfo, SSE e-Interaction, THS, Eastmoney |
-| 11 | Macro & rates | Social financing, PMI, government and credit yield curves, repo fixing rates, LPR, global macro calendar | PBoC, NBS, ChinaBond, China Money (CFETS), Eastmoney, Wallstreetcn |
-| 12 | Index & calendar | CSI / CNI constituents and weights, CSI PE and dividend yield, SZSE trading calendar | CSI, CNI, SZSE |
-| 13 | Futures & commodities | Futures daily quotes, commodity and index options, member position rankings, real-time futures, FTSE China A50, SGE spot | SHFE, INE, CZCE, CFFEX, GFEX, Sina, SGE |
-| 14 | Event-driven | Earnings previews, institutional surveys, shareholder buying/selling, buybacks, share pledges, IPO calendar | Eastmoney |
-| 15 | Convertible bonds | Terms, conversion price, conversion value, premium, listing / delisting status | Eastmoney |
+<table>
+<thead>
+<tr><th nowrap>#</th><th nowrap>Category</th><th>Data</th><th>Main sources</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap>1</td><td nowrap>Quotes / K-lines</td><td>Live price, PE/PB/market cap/turnover, daily/weekly/monthly forward- and back-adjusted and 1–60-minute K-lines, full-market daily bars for a trading day (with turnover value), adjust factors, index / ETF</td><td>Tencent, TDX official site, Baidu, Sina</td></tr>
+<tr><td nowrap>2</td><td nowrap>Research</td><td>Stock / industry reports and PDFs, ratings, 3-year EPS forecasts, consensus EPS, natural-language search, report lists</td><td>Eastmoney, Sina, THS, iwencai</td></tr>
+<tr><td nowrap>3</td><td nowrap>Market signals</td><td>Hot stocks and themes, northbound flow, sector membership, fund flow, dragon-tiger board, lockup expiries, industry ranking, board fund flow</td><td>THS, Eastmoney</td></tr>
+<tr><td nowrap>4</td><td nowrap>Capital flow / chips</td><td>Margin trading, block trades, shareholder count, dividends, 120-day fund flow, chip distribution, ETF shares</td><td>Eastmoney, SSE, SZSE, computed locally</td></tr>
+<tr><td nowrap>5</td><td nowrap>News</td><td>Stock news, CLS flash, 7×24 live news, CCTV evening news transcripts</td><td>Eastmoney, CLS, Wallstreetcn, CCTV</td></tr>
+<tr><td nowrap>6</td><td nowrap>Fundamentals</td><td>Quarterly snapshot, F10, financial statements, valuation history, listing/delisting dates, SW industry history, ST list</td><td>TDX (mootdx), Sina, baostock, SW, Eastmoney</td></tr>
+<tr><td nowrap>7</td><td nowrap>Filings</td><td>Full filings across SSE / SZSE / BSE</td><td>cninfo</td></tr>
+<tr><td nowrap>8</td><td nowrap>Limit-up</td><td>Limit-up / break / limit-down / previous-day pools, limit-up reasons, watch list, intraday anomalies</td><td>Eastmoney, THS</td></tr>
+<tr><td nowrap>9</td><td nowrap>ETF options</td><td>T-quotes, Greeks, implied volatility</td><td>Sina</td></tr>
+<tr><td nowrap>10</td><td nowrap>Sentiment</td><td>cninfo IRM (Shenzhen), SSE e-Interaction (Shanghai), THS hot list, Eastmoney popularity rank, concept hits</td><td>cninfo, SSE e-Interaction, THS, Eastmoney</td></tr>
+<tr><td nowrap>11</td><td nowrap>Macro &amp; rates</td><td>Social financing, PMI, government and credit yield curves, repo fixing rates, LPR, global macro calendar</td><td>PBoC, NBS, ChinaBond, China Money (CFETS), Eastmoney, Wallstreetcn</td></tr>
+<tr><td nowrap>12</td><td nowrap>Index &amp; calendar</td><td>CSI / CNI constituents and weights, CSI PE and dividend yield, SZSE trading calendar</td><td>CSI, CNI, SZSE</td></tr>
+<tr><td nowrap>13</td><td nowrap>Futures &amp; commodities</td><td>Futures daily quotes, commodity and index options, member position rankings, real-time futures, FTSE China A50, SGE spot</td><td>SHFE, INE, CZCE, CFFEX, GFEX, Sina, SGE</td></tr>
+<tr><td nowrap>14</td><td nowrap>Event-driven</td><td>Earnings previews, institutional surveys, shareholder buying/selling, buybacks, share pledges, IPO calendar</td><td>Eastmoney</td></tr>
+<tr><td nowrap>15</td><td nowrap>Convertible bonds</td><td>Terms, conversion price, conversion value, premium, listing / delisting status</td><td>Eastmoney</td></tr>
+</tbody>
+</table>
 
 Plus 5 backups: official dragon-tiger, Sina fund flow, filings, official SSE/SZSE margin data, and BSE current quotes — used when a primary source is blocked.
 
@@ -139,15 +144,20 @@ There are 82 primary entries and 5 backups. Counts refer to capability entries: 
 
 ### Market Data (real-time, no IP ban)
 
-| Endpoint | Data |
-|----------|------|
-| Tencent Finance | PE(TTM) / PB / Market Cap / Float Cap / Turnover / Price Limits / Index / ETF |
-| **Tencent K-lines** | SSE/SZSE daily/weekly/monthly forward- and back-adjusted + 1/5/15/30/60-minute bars, rotating across three Tencent hosts; no BSE (V3.9 new) |
-| **TDX End-of-Day Package** | Every SSE/SZSE/BSE security's daily bar for one trading day, incl. turnover value; one 2–3 MB zip; 2022-01-04 and 2023-01-03 tested available, 2021-01-04 gone, not every day verified; packages before 2022-05-06 have no BSE files (V3.9 new) |
-| **Tencent Ticks** | All ticks of the latest trading day (~3-second snapshots, not Level-2 trade-by-trade): time / price / volume / value / buy-sell side, SSE/SZSE stocks + ETFs, no BSE; after the close the total is checked against the day's turnover (V3.10 new, replaces mootdx ticks) |
-| **Baidu K-line** | Daily K-line + MA5/MA10/MA20 moving averages included (V3.0 new) |
-| **Sina Adjust Factors** | qfq / hfq factor series + applying them to unadjusted candles (V3.7 new) |
-| mootdx Market Data (archive) | Candlesticks (multi-period) + order book + ticks + 46-field quote (⚠️ TDX public servers return empty since 2026-09, see FAQ #52; use Tencent K-lines / the end-of-day package for bars and Tencent Ticks for trades) |
+<table>
+<thead>
+<tr><th nowrap>Endpoint</th><th>Data</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap>Tencent Finance</td><td>PE(TTM) / PB / Market Cap / Float Cap / Turnover / Price Limits / Index / ETF</td></tr>
+<tr><td nowrap><strong>Tencent K-lines</strong></td><td>SSE/SZSE daily/weekly/monthly forward- and back-adjusted + 1/5/15/30/60-minute bars, rotating across three Tencent hosts; no BSE (V3.9 new)</td></tr>
+<tr><td nowrap><strong>TDX End-of-Day Package</strong></td><td>Every SSE/SZSE/BSE security's daily bar for one trading day, incl. turnover value; one 2–3 MB zip; 2022-01-04 and 2023-01-03 tested available, 2021-01-04 gone, not every day verified; packages before 2022-05-06 have no BSE files (V3.9 new)</td></tr>
+<tr><td nowrap><strong>Tencent Ticks</strong></td><td>All ticks of the latest trading day (~3-second snapshots, not Level-2 trade-by-trade): time / price / volume / value / buy-sell side, SSE/SZSE stocks + ETFs, no BSE; after the close the total is checked against the day's turnover (V3.10 new, replaces mootdx ticks)</td></tr>
+<tr><td nowrap><strong>Baidu K-line</strong></td><td>Daily K-line + MA5/MA10/MA20 moving averages included (V3.0 new)</td></tr>
+<tr><td nowrap><strong>Sina Adjust Factors</strong></td><td>qfq / hfq factor series + applying them to unadjusted candles (V3.7 new)</td></tr>
+<tr><td nowrap>mootdx Market Data (archive)</td><td>Candlesticks (multi-period) + order book + ticks + 46-field quote (⚠️ TDX public servers return empty since 2026-09, see FAQ #52; use Tencent K-lines / the end-of-day package for bars and Tencent Ticks for trades)</td></tr>
+</tbody>
+</table>
 
 ### Research Reports
 
@@ -189,13 +199,18 @@ There are 82 primary entries and 5 backups. Counts refer to capability entries: 
 
 ### News
 
-| Endpoint | Data |
-|----------|------|
-| Stock News | Eastmoney per-stock news (direct search-api-web) |
-| CLS Flash | Market-wide real-time flash (v1 API + local signature, zero key, ✅revived in V3.4.0, mutual backup with Global News) |
-| Global News | Eastmoney global finance news (direct np-weblist, 7×24) |
-| **Wallstreetcn Live** | 7×24 live news by channel, with a paging cursor (V3.9 new) |
-| **CCTV Evening News** | Xinwen Lianbo item titles + transcripts (cctv.com, updated after about 20:00 Beijing time; V3.9 new) |
+<table>
+<thead>
+<tr><th nowrap>Endpoint</th><th>Data</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap>Stock News</td><td>Eastmoney per-stock news (direct search-api-web)</td></tr>
+<tr><td nowrap>CLS Flash</td><td>Market-wide real-time flash (v1 API + local signature, zero key, ✅revived in V3.4.0, mutual backup with Global News)</td></tr>
+<tr><td nowrap>Global News</td><td>Eastmoney global finance news (direct np-weblist, 7×24)</td></tr>
+<tr><td nowrap><strong>Wallstreetcn Live</strong></td><td>7×24 live news by channel, with a paging cursor (V3.9 new)</td></tr>
+<tr><td nowrap><strong>CCTV Evening News</strong></td><td>Xinwen Lianbo item titles + transcripts (cctv.com, updated after about 20:00 Beijing time; V3.9 new)</td></tr>
+</tbody>
+</table>
 
 ### Fundamentals + Filings
 
@@ -233,24 +248,34 @@ There are 82 primary entries and 5 backups. Counts refer to capability entries: 
 
 ### Sentiment & Interaction (V3.3 new)
 
-| Endpoint | Data |
-|----------|------|
-| Investor Q&A (IRM) | Investor questions + official company replies (cninfo, Shenzhen-listed companies; unique source: how a company responds to rumors/news) |
-| **SSE e-Interaction** | Investor questions + replies for Shanghai-listed companies, which cninfo IRM does not cover (V3.9 new) |
-| THS Hot List | Popularity / concept tags / rank change |
-| EM Popularity Rank | Rank + rank change + name/price |
-| EM Stock Concept Hits | Which concepts the market is grouping this stock under + heat |
+<table>
+<thead>
+<tr><th nowrap>Endpoint</th><th>Data</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap>Investor Q&amp;A (IRM)</td><td>Investor questions + official company replies (cninfo, Shenzhen-listed companies; unique source: how a company responds to rumors/news)</td></tr>
+<tr><td nowrap><strong>SSE e-Interaction</strong></td><td>Investor questions + replies for Shanghai-listed companies, which cninfo IRM does not cover (V3.9 new)</td></tr>
+<tr><td nowrap>THS Hot List</td><td>Popularity / concept tags / rank change</td></tr>
+<tr><td nowrap>EM Popularity Rank</td><td>Rank + rank change + name/price</td></tr>
+<tr><td nowrap>EM Stock Concept Hits</td><td>Which concepts the market is grouping this stock under + heat</td></tr>
+</tbody>
+</table>
 
 ### Macro & Rates (V3.7 new, extended in V3.9)
 
-| Endpoint | Data |
-|----------|------|
-| **PBoC Social Financing** | Aggregate Financing to the Real Economy, monthly, 12 columns (RMB/entrusted/trust loans, undiscounted acceptances, corporate & government bonds, equity financing, ABS, write-offs) |
-| **NBS PMI** | Manufacturing / non-manufacturing / composite PMI + large / medium / small enterprise breakdown |
-| **ChinaBond Yield Curves** | Government / commercial bank AAA / short-term note AAA, 3 months to 30 years (V3.9 new) |
-| **Repo Fixing Rates** | FR001 / FR007 / FR014 and the matching FDR tenors (China Money; FR about 3 years, FDR about 1 year of history; V3.9 new) |
-| **LPR** | 1-year / 5-year full history (incl. the daily quotes of the 2013–2019 regime; V3.9 new) |
-| **Global Macro Calendar** | Actual / forecast / previous / revised values and importance (Wallstreetcn; V3.9 new) |
+<table>
+<thead>
+<tr><th nowrap>Endpoint</th><th>Data</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap><strong>PBoC Social Financing</strong></td><td>Aggregate Financing to the Real Economy, monthly, 12 columns (RMB/entrusted/trust loans, undiscounted acceptances, corporate &amp; government bonds, equity financing, ABS, write-offs)</td></tr>
+<tr><td nowrap><strong>NBS PMI</strong></td><td>Manufacturing / non-manufacturing / composite PMI + large / medium / small enterprise breakdown</td></tr>
+<tr><td nowrap><strong>ChinaBond Yield Curves</strong></td><td>Government / commercial bank AAA / short-term note AAA, 3 months to 30 years (V3.9 new)</td></tr>
+<tr><td nowrap><strong>Repo Fixing Rates</strong></td><td>FR001 / FR007 / FR014 and the matching FDR tenors (China Money; FR about 3 years, FDR about 1 year of history; V3.9 new)</td></tr>
+<tr><td nowrap><strong>LPR</strong></td><td>1-year / 5-year full history (incl. the daily quotes of the 2013–2019 regime; V3.9 new)</td></tr>
+<tr><td nowrap><strong>Global Macro Calendar</strong></td><td>Actual / forecast / previous / revised values and importance (Wallstreetcn; V3.9 new)</td></tr>
+</tbody>
+</table>
 
 ### Index Data and Trading Calendar
 
@@ -263,15 +288,20 @@ There are 82 primary entries and 5 backups. Counts refer to capability entries: 
 
 ### Futures & Commodities (V3.9 new, #49)
 
-| Endpoint | Data |
-|----------|------|
-| **Futures Daily** | Official closing data from SHFE / INE / CZCE / CFFEX / GFEX: OHLC, settlement, volume, open interest and its change, turnover |
-| **Options Daily** | Commodity and index options: strike, settlement, volume and open interest, Delta, implied volatility (per series on SHFE / INE, per contract on CZCE / GFEX; CFFEX publishes neither Delta nor IV) |
-| **Member Position Rank** | Top 20 members by volume / long / short positions and their changes (SHFE, INE, CZCE, CFFEX) |
-| **Real-Time Futures** | Sina real-time price and best bid/ask across all six futures exchanges (use this for DCE contracts); price limits for CFFEX contracts only |
-| **Futures Daily K-lines** | Sina daily bars for a continuous series (`RB0` / `M0`, back to 2005) or a single contract (those expiring from about 2022), all six exchanges incl. DCE; prices match the official daily data, settlement prices are incomplete (V3.10 new) |
-| **FTSE China A50** | FTSE China A50 continuous futures quote |
-| **SGE Spot** | Shanghai Gold Exchange Au99.99 / Au(T+D) / Ag(T+D) / Pt99.95 and more, daily bars |
+<table>
+<thead>
+<tr><th nowrap>Endpoint</th><th>Data</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap><strong>Futures Daily</strong></td><td>Official closing data from SHFE / INE / CZCE / CFFEX / GFEX: OHLC, settlement, volume, open interest and its change, turnover</td></tr>
+<tr><td nowrap><strong>Options Daily</strong></td><td>Commodity and index options: strike, settlement, volume and open interest, Delta, implied volatility (per series on SHFE / INE, per contract on CZCE / GFEX; CFFEX publishes neither Delta nor IV)</td></tr>
+<tr><td nowrap><strong>Member Position Rank</strong></td><td>Top 20 members by volume / long / short positions and their changes (SHFE, INE, CZCE, CFFEX)</td></tr>
+<tr><td nowrap><strong>Real-Time Futures</strong></td><td>Sina real-time price and best bid/ask across all six futures exchanges (use this for DCE contracts); price limits for CFFEX contracts only</td></tr>
+<tr><td nowrap><strong>Futures Daily K-lines</strong></td><td>Sina daily bars for a continuous series (<code>RB0</code> / <code>M0</code>, back to 2005) or a single contract (those expiring from about 2022), all six exchanges incl. DCE; prices match the official daily data, settlement prices are incomplete (V3.10 new)</td></tr>
+<tr><td nowrap><strong>FTSE China A50</strong></td><td>FTSE China A50 continuous futures quote</td></tr>
+<tr><td nowrap><strong>SGE Spot</strong></td><td>Shanghai Gold Exchange Au99.99 / Au(T+D) / Ag(T+D) / Pt99.95 and more, daily bars</td></tr>
+</tbody>
+</table>
 
 > DCE's website uses a JavaScript challenge (plain HTTP gets 412), so its official daily quotes are not integrated; use Futures Daily K-lines for DCE history and Real-Time Futures for live prices.
 
@@ -288,9 +318,14 @@ There are 82 primary entries and 5 backups. Counts refer to capability entries: 
 
 ### Convertible Bonds (V3.9 new)
 
-| Endpoint | Data |
-|----------|------|
-| **Convertible Bonds** | Underlying stock, rating, issue size, conversion price, conversion value, premium, listing / maturity / delisting dates and status |
+<table>
+<thead>
+<tr><th nowrap>Endpoint</th><th>Data</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap><strong>Convertible Bonds</strong></td><td>Underlying stock, rating, issue size, conversion price, conversion value, premium, listing / maturity / delisting dates and status</td></tr>
+</tbody>
+</table>
 
 ### Backup Sources (fallback when a primary source fails)
 
@@ -378,12 +413,17 @@ Just tell your AI assistant:
 
 ### 4 Built-in Research Workflows
 
-| Workflow | What it does | Time |
-|----------|-------------|------|
-| Single Stock Valuation | Live price → Consensus EPS → Forward PE / PEG / PE payback years | 30 sec |
-| Batch Comparison | Side-by-side valuation ranking | 1 min |
-| Thematic Research | iwencai multi-keyword NL search + Eastmoney PDF cross-reference | 2 min |
-| New Target Research | Coverage → Valuation → Concepts → Fund flow → Dragon tiger → Lockup → Margin | 1 min |
+<table>
+<thead>
+<tr><th nowrap>Workflow</th><th>What it does</th><th nowrap>Time</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap>Single Stock Valuation</td><td>Live price → Consensus EPS → Forward PE / PEG / PE payback years</td><td nowrap>30 sec</td></tr>
+<tr><td nowrap>Batch Comparison</td><td>Side-by-side valuation ranking</td><td nowrap>1 min</td></tr>
+<tr><td nowrap>Thematic Research</td><td>iwencai multi-keyword NL search + Eastmoney PDF cross-reference</td><td nowrap>2 min</td></tr>
+<tr><td nowrap>New Target Research</td><td>Coverage → Valuation → Concepts → Fund flow → Dragon tiger → Lockup → Margin</td><td nowrap>1 min</td></tr>
+</tbody>
+</table>
 
 ---
 
@@ -392,15 +432,20 @@ Just tell your AI assistant:
 
 > **Principle: if Tencent or an exchange / official body has it, don't use Eastmoney.** Quotes, K-lines, live prices, market cap and financial statements available from Tencent, official sources or Sina must come from them. mootdx quote commands return empty since 2026-09 (#52), so mootdx is only used for financial snapshots and F10. Eastmoney is only for its exclusive data, all routed through the throttled `em_get()`.
 
-| Priority | Source | Protocol | IP Ban Risk | Use |
-|----------|--------|----------|-------------|-----|
-| **1 (top)** | Tencent Finance | HTTP | **Never banned** (one K-line host rate-limits after ~600 calls; three hosts rotate) | Live price / PE / PB / market cap / turnover / price limits / index / ETF / daily-weekly-monthly and minute K-lines |
-| **2** | Exchanges / official bodies | HTTP | Very low (avoid bursts) | TDX package, SSE / SZSE / BSE, five futures exchanges, SGE, ChinaBond, China Money, CSI / CNI, PBoC, NBS |
-| **3** | Sina / cninfo / THS / Baidu / CLS / Wallstreetcn / CCTV / SW | HTTP | Low | Financial statements, adjust factors, report lists, real-time futures, filings, consensus EPS, hot stocks and northbound, K-lines with MAs, live news, evening news, industry history |
-| **4** | mootdx (TDX) | TCP 7709 | Never banned | Financial snapshots and F10 "latest notes" work; **K-lines / order book / ticks return empty since 2026-09 (#52)**; ticks now come from Tencent §1.4 |
-| **4** | baostock | TCP | Low (no registration) | Valuation history PE/PB/PS/PCF + turnover + suspension + ST + listing/delisting dates (**no Beijing Exchange**) |
-| Key required | iwencai | OpenAPI | Low | NL semantic report search (the only source that needs a key) |
-| **last (exclusive only)** | **Eastmoney** datacenter / push2 / reportapi / search / np-weblist | HTTP | **Medium — has rate-limit risk** | Dragon-tiger / lockup / margin / block trades / shareholders / dividends / fund flow / report PDFs / news / ST list / LPR / event-driven / convertibles (all via `em_get()`) |
+<table>
+<thead>
+<tr><th nowrap>Priority</th><th>Source</th><th nowrap>Protocol</th><th>IP Ban Risk</th><th>Use</th></tr>
+</thead>
+<tbody>
+<tr><td nowrap><strong>1 (top)</strong></td><td>Tencent Finance</td><td nowrap>HTTP</td><td><strong>Never banned</strong> (one K-line host rate-limits after ~600 calls; three hosts rotate)</td><td>Live price / PE / PB / market cap / turnover / price limits / index / ETF / daily-weekly-monthly and minute K-lines</td></tr>
+<tr><td nowrap><strong>2</strong></td><td>Exchanges / official bodies</td><td nowrap>HTTP</td><td>Very low (avoid bursts)</td><td>TDX package, SSE / SZSE / BSE, five futures exchanges, SGE, ChinaBond, China Money, CSI / CNI, PBoC, NBS</td></tr>
+<tr><td nowrap><strong>3</strong></td><td>Sina / cninfo / THS / Baidu / CLS / Wallstreetcn / CCTV / SW</td><td nowrap>HTTP</td><td>Low</td><td>Financial statements, adjust factors, report lists, real-time futures, filings, consensus EPS, hot stocks and northbound, K-lines with MAs, live news, evening news, industry history</td></tr>
+<tr><td nowrap><strong>4</strong></td><td>mootdx (TDX)</td><td nowrap>TCP 7709</td><td>Never banned</td><td>Financial snapshots and F10 &quot;latest notes&quot; work; <strong>K-lines / order book / ticks return empty since 2026-09 (#52)</strong>; ticks now come from Tencent §1.4</td></tr>
+<tr><td nowrap><strong>4</strong></td><td>baostock</td><td nowrap>TCP</td><td>Low (no registration)</td><td>Valuation history PE/PB/PS/PCF + turnover + suspension + ST + listing/delisting dates (<strong>no Beijing Exchange</strong>)</td></tr>
+<tr><td nowrap>Key required</td><td>iwencai</td><td nowrap>OpenAPI</td><td>Low</td><td>NL semantic report search (the only source that needs a key)</td></tr>
+<tr><td nowrap><strong>last (exclusive only)</strong></td><td><strong>Eastmoney</strong> datacenter / push2 / reportapi / search / np-weblist</td><td nowrap>HTTP</td><td><strong>Medium — has rate-limit risk</strong></td><td>Dragon-tiger / lockup / margin / block trades / shareholders / dividends / fund flow / report PDFs / news / ST list / LPR / event-driven / convertibles (all via <code>em_get()</code>)</td></tr>
+</tbody>
+</table>
 
 <details>
 <summary><b>All 34 sources</b></summary>
