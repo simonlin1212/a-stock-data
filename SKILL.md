@@ -6994,6 +6994,9 @@ def calc_peg(pe: float, cagr: float) -> float:
 
 ### 流程 A: 单票完整估值（30秒）
 
+当年 EPS 为正时，`digest_years` 在 PE 已达到或低于 30x 时为 `0`；PE 高于 30x 且预期增长为正时返回消化年数。
+若当年 EPS 缺失或非正，或 PE 高于 30x 但下一年预测缺失、盈利不增长，无法得出有限消化时间，返回 `None`（JSON 中为 `null`）。
+
 ```python
 import requests
 import urllib.request
@@ -7045,8 +7048,8 @@ def full_valuation(code: str) -> dict:
     cagr = (eps_next / eps_cur - 1) if (eps_cur and eps_next) else 0
     peg = pe_fwd / (cagr * 100) if cagr > 0 else float("inf")
     digest = (
-        math.log(pe_fwd / 30) / math.log(1 + cagr)
-        if pe_fwd > 30 and cagr > 0 else 0
+        pe_digestion(pe_fwd, cagr)
+        if eps_cur is not None and eps_cur > 0 else float("inf")
     )
 
     return {
@@ -7060,7 +7063,7 @@ def full_valuation(code: str) -> dict:
         "pe_fwd": round(pe_fwd, 1) if eps_cur else None,
         "cagr_pct": round(cagr * 100, 0) if cagr else None,
         "peg": round(peg, 2) if peg != float("inf") else None,
-        "digest_years": round(digest, 1),
+        "digest_years": round(digest, 1) if math.isfinite(digest) else None,
         "analyst_count": analyst_count,
     }
 
