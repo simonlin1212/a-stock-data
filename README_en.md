@@ -34,7 +34,7 @@ Full-stack data toolkit for China A-Share market — 15-layer architecture · 87
 
 A self-contained Skill file that consolidates raw A-share and related market data from 34 sources into a ready-to-use toolkit for AI coding assistants. No need to memorize Tencent K-line paging parameters, the binary layout of TDX end-of-day packages, Eastmoney PDF Referer headers, or iwencai X-Claw authentication — it's all handled. And when a primary source bans you, there's a backup-source quick reference to fall back on.
 
-> Compatible with [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
+> Compatible with [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/openclaw/openclaw) · [WorkBuddy](https://www.workbuddy.cn/) · [Muse](https://muse.ai/) · [Grok Bot](https://x.ai/bot)
 >
 > The Skill file is structured Markdown + embedded Python. Any AI coding assistant with context injection can use it.
 

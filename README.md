@@ -36,7 +36,7 @@
 
 一个自包含的 Skill 文件，把分散在 34 个数据源里的 A 股及相关市场原始数据整合成 AI 编程助手直接能用的工具集。你不用再背腾讯 K 线的分段参数、通达信盘后包的二进制格式、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。主源被封还有「备用源速查」可降级。
 
-> 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
+> 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/openclaw/openclaw) · [WorkBuddy](https://www.workbuddy.cn/) · [Muse](https://muse.ai/) · [Grok Bot](https://x.ai/bot)
 >
 > Skill 文件本质是结构化 Markdown + 内嵌 Python，任何支持上下文注入的 AI 编程助手都能用。
 
