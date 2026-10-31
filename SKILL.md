@@ -1,8 +1,10 @@
 ---
 name: a-stock-data
 description: 当任务需要写代码实际获取A股及相关市场数据时使用——行情/K线/逐笔(腾讯日周月前后复权+分钟线+当日逐笔、通达信官网全市场盘后包、百度)、研报(东财+新浪+同花顺+iwencai)、信号(热点/北向/龙虎榜/解禁/行业/板块资金流)、资金面(融资融券/大宗/股东户数/分红/资金流/ETF份额)、新闻(财联社/东财/华尔街见闻/新闻联播)、财务三表/F10/估值历史/ST名单、公告(巨潮)、打板(涨停池/连板/炸板率/监控池/异动)、ETF期权、舆情互动(互动易/上证e互动/热榜)、筹码分布、复权因子、申万行业变迁、宏观与利率(社融/PMI/中债收益率曲线/回购定盘利率/LPR/全球宏观日历)、指数成分/权重/估值/交易日历、期货与大宗商品(五家期货交易所日行情/商品与股指期权/持仓排名/期货日K含大商所/实时期货/A50/上海金)、事件驱动(业绩预告/机构调研/增减持/回购/股权质押/新股申购)、可转债等真实数据。十五层·87端点(含5备胎)·34个来源·内嵌全部可运行代码，自包含零外部文件；优先用腾讯/交易所官方等不封IP源，东财接口已内置限流防封，主源被封可查「备用源速查」降级。仅在需要调用数据接口取数时使用：A股概念解释、投资观点讨论、策略问答等无需取数的话题不要加载本skill。
-origin: custom
-version: 3.10.3
+license: Apache-2.0
+metadata:
+  origin: custom
+  version: "3.10.3"
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
@@ -267,7 +269,7 @@ ETF期权层 (V3.3 新增)
 | 4.1 | `margin_trading(code)` | 融资融券明细 | 东财 |
 | 4.2 | `block_trade(code)` | 大宗交易+营业部 | 东财 |
 | 4.3 | `holder_num_change(code)` | 股东户数变化 | 东财 |
-| 4.4 | `dividend_history(code)` | 分红送转历史 | 东财 |
+| 4.4 | `dividend_history(code)` / `get_dividend_yield_ttm(code, price)` | 分红送转历史 / 本地 TTM 股息率 | 东财 + 本地计算 |
 | 4.5 | `stock_fund_flow_120d(code)` | 个股资金流（120日，日级） | 东财 |
 | 4.6 | `chip_distribution(df)` | 筹码分布（获利比例/平均成本/90-70成本区间/筹码峰） | 本地计算 |
 | 4.7 | `etf_shares(date, exchange)` | ETF 份额（万份）：上交所历史日期 / 深交所当前快照 | 上交所/深交所 |
@@ -748,6 +750,7 @@ def to_joinquant(code: str) -> str:
 ```python
 import time
 import random
+import threading
 import requests
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -776,18 +779,20 @@ from typing import Optional     # 3.9 兼容：不能写 `dict | None`（那是 
 
 EM_MIN_INTERVAL = 1.0          # 两次东财请求最小间隔(秒)；批量筛选建议调大到 1.5~2
 _em_last_call = [0.0]          # 模块级上次请求时间戳
+_em_lock = threading.Lock()    # 进程内互斥：等待、请求和时间戳更新必须作为一个串行区间
 
 def em_get(url: str, params: Optional[dict] = None, headers: Optional[dict] = None,
            timeout: int = 15, **kwargs):
     """东财统一请求入口：自动节流 + 复用 session + 默认 UA。
     所有 eastmoney.com 接口都应通过它请求，避免高频被封 IP。"""
-    wait = EM_MIN_INTERVAL - (time.time() - _em_last_call[0])
-    if wait > 0:
-        time.sleep(wait + random.uniform(0.1, 0.5))
-    try:
-        return EM_SESSION.get(url, params=params, headers=headers, timeout=timeout, **kwargs)
-    finally:
-        _em_last_call[0] = time.time()
+    with _em_lock:
+        wait = EM_MIN_INTERVAL - (time.time() - _em_last_call[0])
+        if wait > 0:
+            time.sleep(wait + random.uniform(0.1, 0.5))
+        try:
+            return EM_SESSION.get(url, params=params, headers=headers, timeout=timeout, **kwargs)
+        finally:
+            _em_last_call[0] = time.time()
 
 def eastmoney_datacenter(report_name: str, columns: str = "ALL",
                           filter_str: str = "", page_size: int = 50,
@@ -3114,7 +3119,7 @@ for d in data[:5]:
 # 股东户数持续减少 = 筹码集中 = 主力吸筹信号
 ```
 
-### 4.4 分红送转历史
+### 4.4 分红送转历史 + TTM 股息率
 
 ```python
 def dividend_history(code: str, page_size: int = 20) -> list[dict]:
@@ -3139,10 +3144,65 @@ def dividend_history(code: str, page_size: int = 20) -> list[dict]:
         })
     return rows
 
+def get_dividend_yield_ttm(code: str, current_price: float, months: int = 12) -> dict:
+    """用分红历史计算滚动股息率；这是本地派生助手，不计入 87 个数据入口。
+
+    保留旧版公开签名与返回字段。窗口按 ``months * 30`` 个自然日计算；日期或派息值
+    无效的记录会跳过。股价无效或不为正时仍返回派息汇总，但股息率为 ``None``。
+    """
+    from datetime import datetime, timedelta
+    from math import isfinite
+
+    if isinstance(months, bool) or not isinstance(months, int) or months <= 0:
+        raise ValueError("months 必须是正整数")
+
+    cutoff_date = datetime.now() - timedelta(days=months * 30)
+    history = dividend_history(code, page_size=20)
+    ttm_total = 0.0
+    period_count = 0
+    latest_ex_date = ""
+    for item in history:
+        ex_date = item.get("date", "")
+        try:
+            ex_dt = datetime.strptime(ex_date, "%Y-%m-%d")
+            bonus = float(item.get("bonus_rmb", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(item.get("bonus_rmb"), bool) or not isfinite(bonus):
+            continue
+        if ex_dt >= cutoff_date:
+            ttm_total += bonus
+            period_count += 1
+            latest_ex_date = max(latest_ex_date, ex_date)
+
+    try:
+        price = float(current_price)
+    except (TypeError, ValueError):
+        price = float("nan")
+    valid_price = not isinstance(current_price, bool) and isfinite(price) and price > 0
+    yield_pct = round(ttm_total / price * 100, 2) if valid_price else None
+
+    note = ""
+    if not valid_price:
+        note = "股价无效或不为正，无法计算股息率"
+    elif period_count == 0:
+        note = f"最近 {months} 个月无有效分红记录"
+    return {
+        "ttm_dividend_per_share": ttm_total,
+        "dividend_yield_pct": yield_pct,
+        "period_count": period_count,
+        "data_cutoff_date": latest_ex_date,
+        "note": note,
+    }
+
 # 用法
 data = dividend_history("600519")
 for d in data[:5]:
     print(f"{d['date']}: 每股派息={d['bonus_rmb']}元 转增={d['transfer_ratio']} 送={d['bonus_ratio']}")
+
+price = tencent_quote(["600519"])["600519"]["price"]
+ttm = get_dividend_yield_ttm("600519", current_price=price)
+print(f"TTM 股息率: {ttm['dividend_yield_pct']}%")
 ```
 
 ### 4.5 个股资金流（120日，日级）
@@ -7479,8 +7539,7 @@ bj_quote = bse_quote_backup("2026-09-04", code="920021")
 > ⚠️ **腾讯分钟 K 线字段坑**（§1.2 `tencent_kline()` 已按此解析，不返回成交额）：返回数组 `[时间, 开, 收, 高, 低, 量, {}, 换手率基点]`，量的单位科创板是股、其余是手（见 §1.2）——第 8 个字段（下标 7）**不是成交额，是换手率基点**（当日各根累加 ÷100 = 当日换手率%）。当成交额读会小三个数量级；成交额需自算 `成交数量 × 均价`（成交数量：科创板就是量（股）；可转债是量 × 10（张）；沪深主板、创业板、B 股、ETF、LOF、REITs 是量 × 100；指数不适用）。
 
 ```python
-import json, urllib.request, ssl
-_ctx = ssl.create_default_context(); _ctx.check_hostname = False; _ctx.verify_mode = ssl.CERT_NONE
+import json, urllib.request
 
 def dragon_tiger_backup(trade_date: str) -> dict:
     """龙虎榜官方备用源（东财被封时用）：上交所+深交所官方，零鉴权权威一手，含营业部席位。"""
@@ -7489,7 +7548,7 @@ def dragon_tiger_backup(trade_date: str) -> dict:
           f"&CATALOGID=1842_xxpl&TABKEY=tab1&txtStart={trade_date}&txtEnd={trade_date}&random=0.9")
     req = urllib.request.Request(su, headers={"User-Agent": UA,
           "Referer": "https://www.szse.cn/disclosure/supervision/dealinfo/index.html"})
-    with urllib.request.urlopen(req, timeout=15, context=_ctx) as r:
+    with urllib.request.urlopen(req, timeout=15) as r:
         d = json.loads(r.read())
     for row in d[0].get("data", []):
         out["szse"].append({"code": row.get("zqdm"), "name": row.get("zqjc"),
@@ -7525,7 +7584,7 @@ def announcements_backup(code: str, page_size: int = 20) -> list:
         req = urllib.request.Request("https://www.szse.cn/api/disc/announcement/annList", data=body,
               headers={"User-Agent": UA, "Content-Type": "application/json",
                        "Referer": "https://www.szse.cn/disclosure/listed/notice/index.html"})
-        with urllib.request.urlopen(req, timeout=15, context=_ctx) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             d = json.loads(r.read())
         return [{"title": a.get("title"), "time": a.get("publishTime", "")[:10],
                  "pdf": "https://disc.static.szse.cn/download" + a.get("attachPath", "")}

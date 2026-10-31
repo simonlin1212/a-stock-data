@@ -5,6 +5,7 @@ import math
 import re
 import unittest
 import urllib.request
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,7 +15,7 @@ import pandas as pd
 
 def load_valuation_functions():
     skill = (Path(__file__).resolve().parents[1] / "SKILL.md").read_text(encoding="utf-8")
-    names = {"pe_digestion", "full_valuation"}
+    names = {"pe_digestion", "full_valuation", "get_dividend_yield_ttm"}
     functions = []
     for block in re.findall(r"```python\n(.*?)\n```", skill, re.S):
         if not any(f"def {name}(" in block for name in names):
@@ -76,6 +77,57 @@ class ValuationTests(unittest.TestCase):
         self.assertIsNone(result["pe_fwd"])
         self.assertIsNone(result["digest_years"])
         json.dumps(result, allow_nan=False)
+
+
+class DividendYieldTests(unittest.TestCase):
+    def setUp(self):
+        self.ns = load_valuation_functions()
+
+    @staticmethod
+    def day_ago(days):
+        return (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    def calculate(self, rows, price=100, months=12):
+        with patch.dict(self.ns, {"dividend_history": MagicMock(return_value=rows)}):
+            return self.ns["get_dividend_yield_ttm"]("600519", price, months)
+
+    def test_window_numeric_conversion_and_cutoff(self):
+        recent = self.day_ago(20)
+        older = self.day_ago(400)
+        result = self.calculate([
+            {"date": recent, "bonus_rmb": "2.5"},
+            {"date": self.day_ago(40), "bonus_rmb": 1.5},
+            {"date": older, "bonus_rmb": 99},
+        ])
+        self.assertEqual(result["ttm_dividend_per_share"], 4.0)
+        self.assertEqual(result["dividend_yield_pct"], 4.0)
+        self.assertEqual(result["period_count"], 2)
+        self.assertEqual(result["data_cutoff_date"], recent)
+
+    def test_invalid_rows_are_skipped(self):
+        result = self.calculate([
+            {"date": "not-a-date", "bonus_rmb": 3},
+            {"date": self.day_ago(10), "bonus_rmb": "bad"},
+            {"date": self.day_ago(9), "bonus_rmb": float("nan")},
+            {"date": self.day_ago(8), "bonus_rmb": True},
+        ])
+        self.assertEqual(result["period_count"], 0)
+        self.assertEqual(result["dividend_yield_pct"], 0.0)
+        self.assertTrue(result["note"])
+
+    def test_invalid_price_returns_none_without_losing_dividend_total(self):
+        rows = [{"date": self.day_ago(10), "bonus_rmb": 2}]
+        for price in (None, "bad", 0, -1, float("inf"), True):
+            with self.subTest(price=price):
+                result = self.calculate(rows, price=price)
+                self.assertEqual(result["ttm_dividend_per_share"], 2.0)
+                self.assertIsNone(result["dividend_yield_pct"])
+                self.assertTrue(result["note"])
+
+    def test_months_must_be_positive_integer(self):
+        for months in (0, -1, 1.5, True):
+            with self.subTest(months=months), self.assertRaises(ValueError):
+                self.calculate([], months=months)
 
 
 if __name__ == "__main__":
