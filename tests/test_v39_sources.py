@@ -13,6 +13,8 @@ import os
 import re
 import struct
 import sys
+import threading
+import time
 import types
 import unittest
 import zipfile
@@ -175,6 +177,10 @@ class ShippedCodeShapeTests(unittest.TestCase):
                 self.assertIsNone(re.search(r"\w\s*\|\s*None\b", code), "PEP 604 union breaks Python 3.9")
                 ast.parse(code, feature_version=(3, 9))
 
+    def test_backup_sources_keep_tls_verification_enabled(self):
+        self.assertNotIn("ssl.CERT_NONE", SKILL)
+        self.assertNotIn("check_hostname = False", SKILL)
+
 
 class ErrorContractTests(unittest.TestCase):
     """来源缺字段时 row["X"] 漏出的 KeyError 会被调用方当成「参数错 / 没这只票」。"""
@@ -322,6 +328,46 @@ class HttpHelperTests(unittest.TestCase):
         missing = MagicMock(status_code=404)
         missing.raise_for_status.side_effect = AssertionError("must not raise for allowed status")
         self.assertIs(self.http(return_value=missing), missing)
+
+    def test_em_get_serializes_concurrent_requests_and_releases_after_error(self):
+        state = {"active": 0, "peak": 0, "calls": 0}
+        state_lock = threading.Lock()
+
+        class Session:
+            def get(self, *args, **kwargs):
+                with state_lock:
+                    state["active"] += 1
+                    state["peak"] = max(state["peak"], state["active"])
+                    state["calls"] += 1
+                    call = state["calls"]
+                time.sleep(0.02)
+                with state_lock:
+                    state["active"] -= 1
+                if call == 1:
+                    raise REAL_REQUESTS.ConnectionError("first call fails")
+                return call
+
+        self.ns["EM_SESSION"] = Session()
+        self.ns["EM_MIN_INTERVAL"] = 0
+        errors, results = [], []
+
+        def call():
+            try:
+                results.append(self.ns["em_get"]("https://example.test"))
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=call) for _ in range(3)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=2)
+
+        self.assertTrue(all(not thread.is_alive() for thread in threads))
+        self.assertEqual(state["peak"], 1)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(sorted(results), [2, 3])
+        self.assertGreater(self.ns["_em_last_call"][0], 0)
 
     def test_non_json_is_runtime_error(self):
         with self.assertRaises(RuntimeError):
