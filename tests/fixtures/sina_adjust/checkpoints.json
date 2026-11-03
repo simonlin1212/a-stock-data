@@ -1,0 +1,257 @@
+{
+ "source": "腾讯 fqkline 日线收盘价（不复权 / qfq / hfq），2026-11-03 取，作为基金复权换算的对照基准",
+ "points": [
+  {
+   "code": "sh511010",
+   "date": "2013-03-25",
+   "close": 99.408,
+   "tencent_qfq": 94.018,
+   "tencent_hfq": 99.408
+  },
+  {
+   "code": "sh511010",
+   "date": "2013-03-26",
+   "close": 99.649,
+   "tencent_qfq": 94.259,
+   "tencent_hfq": 99.649
+  },
+  {
+   "code": "sh511010",
+   "date": "2013-03-27",
+   "close": 99.625,
+   "tencent_qfq": 94.235,
+   "tencent_hfq": 99.625
+  },
+  {
+   "code": "sh511010",
+   "date": "2026-07-01",
+   "close": 140.637,
+   "tencent_qfq": 140.017,
+   "tencent_hfq": 145.407
+  },
+  {
+   "code": "sh511010",
+   "date": "2026-07-02",
+   "close": 140.695,
+   "tencent_qfq": 140.075,
+   "tencent_hfq": 145.465
+  },
+  {
+   "code": "sh511010",
+   "date": "2026-07-03",
+   "close": 140.695,
+   "tencent_qfq": 140.075,
+   "tencent_hfq": 145.465
+  },
+  {
+   "code": "sh511010",
+   "date": "2026-09-21",
+   "close": 140.672,
+   "tencent_qfq": 140.672,
+   "tencent_hfq": 146.063
+  },
+  {
+   "code": "sh511010",
+   "date": "2026-09-22",
+   "close": 140.709,
+   "tencent_qfq": 140.709,
+   "tencent_hfq": 146.1
+  },
+  {
+   "code": "sh511010",
+   "date": "2026-09-23",
+   "close": 140.664,
+   "tencent_qfq": 140.664,
+   "tencent_hfq": 146.055
+  },
+  {
+   "code": "sh513100",
+   "date": "2022-01-11",
+   "close": 5.101,
+   "tencent_qfq": 1.02,
+   "tencent_hfq": 5.101
+  },
+  {
+   "code": "sh513100",
+   "date": "2022-01-12",
+   "close": 5.192,
+   "tencent_qfq": 1.038,
+   "tencent_hfq": 5.192
+  },
+  {
+   "code": "sh513100",
+   "date": "2022-01-14",
+   "close": 1.015,
+   "tencent_qfq": 1.015,
+   "tencent_hfq": 5.075
+  },
+  {
+   "code": "sz159919",
+   "date": "2012-12-03",
+   "close": 2.108,
+   "tencent_qfq": 1.492,
+   "tencent_hfq": 0.806
+  },
+  {
+   "code": "sz159919",
+   "date": "2012-12-04",
+   "close": 2.123,
+   "tencent_qfq": 1.505,
+   "tencent_hfq": 0.812
+  },
+  {
+   "code": "sz159919",
+   "date": "2012-12-05",
+   "close": 2.201,
+   "tencent_qfq": 1.576,
+   "tencent_hfq": 0.841
+  },
+  {
+   "code": "sz159919",
+   "date": "2012-12-06",
+   "close": 2.199,
+   "tencent_qfq": 1.574,
+   "tencent_hfq": 0.841
+  },
+  {
+   "code": "sz159919",
+   "date": "2019-01-14",
+   "close": 3.064,
+   "tencent_qfq": 2.658,
+   "tencent_hfq": 1.301
+  },
+  {
+   "code": "sz159919",
+   "date": "2019-01-15",
+   "close": 3.119,
+   "tencent_qfq": 2.713,
+   "tencent_hfq": 1.324
+  },
+  {
+   "code": "sz159919",
+   "date": "2019-01-16",
+   "close": 3.12,
+   "tencent_qfq": 2.714,
+   "tencent_hfq": 1.325
+  },
+  {
+   "code": "sz159919",
+   "date": "2019-01-17",
+   "close": 3.106,
+   "tencent_qfq": 2.7,
+   "tencent_hfq": 1.319
+  },
+  {
+   "code": "sz159919",
+   "date": "2020-09-14",
+   "close": 4.64,
+   "tencent_qfq": 4.386,
+   "tencent_hfq": 2.034
+  },
+  {
+   "code": "sz159919",
+   "date": "2020-09-15",
+   "close": 4.672,
+   "tencent_qfq": 4.418,
+   "tencent_hfq": 2.048
+  },
+  {
+   "code": "sz159919",
+   "date": "2020-09-16",
+   "close": 4.651,
+   "tencent_qfq": 4.397,
+   "tencent_hfq": 2.039
+  },
+  {
+   "code": "sz159919",
+   "date": "2020-09-17",
+   "close": 4.623,
+   "tencent_qfq": 4.369,
+   "tencent_hfq": 2.027
+  },
+  {
+   "code": "sz159919",
+   "date": "2024-09-13",
+   "close": 3.354,
+   "tencent_qfq": 3.17,
+   "tencent_hfq": 1.518
+  },
+  {
+   "code": "sz159919",
+   "date": "2024-09-18",
+   "close": 3.316,
+   "tencent_qfq": 3.177,
+   "tencent_hfq": 1.521
+  },
+  {
+   "code": "sz159919",
+   "date": "2024-09-19",
+   "close": 3.346,
+   "tencent_qfq": 3.207,
+   "tencent_hfq": 1.534
+  },
+  {
+   "code": "sz159919",
+   "date": "2024-09-20",
+   "close": 3.358,
+   "tencent_qfq": 3.219,
+   "tencent_hfq": 1.539
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-03-31",
+   "close": 4.02,
+   "tencent_qfq": 3.947,
+   "tencent_hfq": 1.848
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-04-01",
+   "close": 4.019,
+   "tencent_qfq": 3.946,
+   "tencent_hfq": 1.848
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-04-02",
+   "close": 4.015,
+   "tencent_qfq": 3.942,
+   "tencent_hfq": 1.846
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-04-03",
+   "close": 3.994,
+   "tencent_qfq": 3.921,
+   "tencent_hfq": 1.837
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-12-08",
+   "close": 4.809,
+   "tencent_qfq": 4.809,
+   "tencent_hfq": 2.214
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-12-09",
+   "close": 4.783,
+   "tencent_qfq": 4.783,
+   "tencent_hfq": 2.203
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-12-10",
+   "close": 4.775,
+   "tencent_qfq": 4.775,
+   "tencent_hfq": 2.2
+  },
+  {
+   "code": "sz159919",
+   "date": "2025-12-11",
+   "close": 4.74,
+   "tencent_qfq": 4.74,
+   "tencent_hfq": 2.185
+  }
+ ]
+}

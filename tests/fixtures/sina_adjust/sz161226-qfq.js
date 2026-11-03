@@ -1,0 +1,2 @@
+var sz161226qfq={"total":1,"data":[{"d":"1900-01-01", "f":"1", "s":"1.0000000000000000", "u":"0.0000000000000000"}]}
+/* dSAn/lTXJQRsYWBw64Ex6qkbByqoW9LbzMVgo5VrRO2FhiNcPIOeubkGqp99yDTvPKsCUqgiDMOKXNY3fF9TuInNPkEMeaOk/u0/u8xH+mCPq3DUnXpih5yzn1SA4pL8PlWM7FWpWyD2Dm3o+fKCZNqOkfkw1foOF1Ucwqln3+xM0kcCgRSX28tISs31eL3lRZxKYpkCE7cm5hr+aliViTgrrNq0PQJC/vAI0Olcs8Nb94vaR/VgQlSQuVhtgu09jP2KkDbgx3GBLOd+ */
