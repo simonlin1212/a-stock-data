@@ -38,6 +38,8 @@ A self-contained Skill file that consolidates raw A-share and related market dat
 >
 > The Skill file is structured Markdown + embedded Python. Any AI coding assistant with context injection can use it.
 
+> **V3.10.4 (2026-11-04 · #64 fund adjustment):** when the §1.6 Sina adjustment factors were used on funds (ETF / LOF), only `f` was read, and for funds it is always 1, so no adjustment happened. The split ratio `s` and cumulative per-unit dividend `u` are now read as well: forward-adjusted `raw / s - u`, back-adjusted `(raw + u) * s`. Stock results, entry count and source count are unchanged.
+>
 > **V3.10.3 (2026-10-23 · SSE e-Interaction time column):** §10.3 `sse_e_interaction()` receives relative reply times (`昨天 18:22` — "yesterday 18:22"). The parser only accepted absolute times and raised for the whole page. Relative and absolute times are now both normalized to `YYYY-MM-DD HH:MM` (Beijing time), and unparseable times still raise. Entry count, source count and returned data are unchanged.
 >
 > **V3.10.2 (2026-10-11 · #58):** fixes the PE digestion years in `full_valuation()`. When the forward PE is above 30x and forecast earnings are not growing (or next year's forecast is missing), it used to return 0 years, as if the PE were already digested; it now returns `None`, meaning it cannot be estimated. It also returns `None` when current EPS is missing or not positive. Entry and source counts are unchanged.
@@ -82,7 +84,7 @@ Plus 5 backups: official dragon-tiger, Sina fund flow, filings, official SSE/SZS
 ## Architecture
 
 ```
-China A-Share Full-Stack Data · 15-Layer Architecture · V3.10.3
+China A-Share Full-Stack Data · 15-Layer Architecture · V3.10.4
 │  (Priority: Tencent / exchanges and official bodies first — no IP bans; mootdx quote commands return empty since 2026-09,
 │   so it is only used for financials and F10; Eastmoney only for exclusive data, with built-in throttling)
 ├── Market Data    Tencent + TDX site + Baidu + Sina   Live price / PE / PB / market cap + Index/ETF + K-lines (w/ MA5/10/20)
@@ -537,7 +539,7 @@ cninfo IRM only covers Shenzhen-listed companies; Shanghai tickers return 0 rows
 
 ## Verification
 
-`python3 -m unittest discover -s tests -v` extracts the shipped code directly from SKILL.md and checks dates, fields, symbol routing, units, pagination and error propagation without network access (187 offline tests as of V3.10.3, plus 4 live tests skipped by default).
+`python3 -m unittest discover -s tests -v` extracts the shipped code directly from SKILL.md and checks dates, fields, symbol routing, units, pagination and error propagation without network access (208 offline tests as of V3.10.4, plus 4 live tests skipped by default).
 
 Live tests are opt-in; the date must be a trading day the sources have already published:
 
