@@ -81,7 +81,7 @@ class ShapeTests(unittest.TestCase):
         where = {f: num for num, (_, funcs) in LAYER1.items() for f in funcs}
         where["tdx_client"] = "1.7"
         texts = {"SKILL.md": SKILL.split("**使用方式：**", 1)[1]}
-        for name in ("README.md", "README_en.md"):
+        for name in ("README.md", "README_en.md", "README_ja.md"):
             texts[name] = (ROOT / name).read_text(encoding="utf-8")
         checked = 0
         for name, text in texts.items():

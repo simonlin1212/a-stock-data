@@ -1,4 +1,4 @@
-<p align="center"><a href="README.md">简体中文</a> | <b>English</b></p>
+<p align="center"><a href="README.md">简体中文</a> | <b>English</b> | <a href="README_ja.md">日本語</a></p>
 
 <h1 align="center">a-stock-data</h1>
 
